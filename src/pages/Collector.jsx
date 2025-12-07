@@ -1,694 +1,6 @@
 import React, { useState, useEffect } from "react";
-
-const styles = `
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-:root {
-  --primary-green: #0d2a1a;
-  --secondary-green: #1a472a;
-  --accent-green: #2d7048;
-  --light-green: #e9f5eb;
-  --card-bg: #ffffff;
-  --background: #f8fbf7;
-  --border-color: #d0e0c8;
-  --text-dark: #1a2c16;
-  --text-medium: #3a4a35;
-  --text-light: #6c7b65;
-  --radius: 12px;
-  --transition: all 0.3s ease;
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
-
-html, body, #root {
-  width: 100%;
-  min-height: 100vh;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  background: var(--background);
-  color: var(--text-dark);
-  line-height: 1.6;
-}
-
-/* HERO SECTION -------------------------------------------------- */
-.vhc-hero {
-  width: 100%;
-  min-height: 180px;
-  background: linear-gradient(rgba(13, 42, 26, 0.95), rgba(13, 42, 26, 0.98)), 
-              url("https://t3.ftcdn.net/jpg/16/27/75/38/360_F_1627753819_TLWx2Fs1OZEc5BeHkA27IIsZkdUJerl8.jpg") center/cover;
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 20px 0;
-}
-
-.vhc-hero-content {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 40px;
-  display: flex;
-  align-items: center;
-  gap: 30px;
-}
-
-.vhc-profile-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-shrink: 0;
-}
-
-.vhc-profile-photo {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  background: linear-gradient(135deg, var(--accent-green), var(--secondary-green));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  color: white;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.vhc-hero-text {
-  flex: 1;
-}
-
-.vhc-hero-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0 0 4px;
-}
-
-.vhc-hero-subtitle {
-  font-size: 16px;
-  color: #e0f0d8;
-  font-weight: 300;
-  margin-bottom: 16px;
-}
-
-.vhc-hero-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.vhc-collector-id {
-  font-size: 14px;
-  font-weight: 500;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.vhc-collector-id::before {
-  content: "🆔";
-  font-size: 12px;
-}
-
-.vhc-collector-role {
-  font-size: 13px;
-  color: #c5e0b4;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.vhc-collector-role::before {
-  content: "👨‍🌾";
-  font-size: 13px;
-}
-
-.vhc-collector-login {
-  font-size: 12px;
-  color: #a8c9a0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.vhc-collector-login::before {
-  content: "🕒";
-  font-size: 12px;
-}
-
-/* MAIN LAYOUT -------------------------------------------------- */
-.vhc-main {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 40px 20px;
-}
-
-.vhc-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.4fr);
-  gap: 40px;
-  align-items: start;
-}
-
-@media (max-width: 1024px) {
-  .vhc-grid {
-    grid-template-columns: 1fr;
-    gap: 30px;
-  }
-  
-  .vhc-hero-content {
-    flex-direction: column;
-    text-align: center;
-    padding: 0 20px;
-  }
-  
-  .vhc-profile-section {
-    flex-direction: column;
-    gap: 15px;
-  }
-}
-
-.vhc-card {
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  padding: 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-  border: 1px solid var(--border-color);
-}
-
-/* FORM SECTION -------------------------------------------------- */
-.vhc-form-header {
-  margin-bottom: 30px;
-}
-
-.vhc-card-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--primary-green);
-  margin: 0 0 8px;
-}
-
-.vhc-card-sub {
-  font-size: 14px;
-  color: var(--text-medium);
-  line-height: 1.5;
-}
-
-/* FORM FIELDS -------------------------------------------------- */
-.vhc-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-  margin-bottom: 10px;
-}
-
-@media (max-width: 768px) {
-  .vhc-form-grid {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-}
-
-.vhc-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.vhc-field-full {
-  grid-column: 1 / -1;
-}
-
-.vhc-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-medium);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.vhc-required {
-  color: #e63946;
-  font-size: 12px;
-}
-
-.vhc-input,
-.vhc-select,
-.vhc-textarea {
-  border: 1.5px solid var(--border-color);
-  border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 14px;
-  background: #fcfefb;
-  color: var(--text-dark);
-  font-family: 'Inter', sans-serif;
-  transition: var(--transition);
-  outline: none;
-  width: 100%;
-}
-
-.vhc-input:focus,
-.vhc-select:focus,
-.vhc-textarea:focus {
-  border-color: var(--accent-green);
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(45, 112, 72, 0.1);
-}
-
-.vhc-textarea {
-  min-height: 100px;
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.vhc-gps-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.vhc-gps-input {
-  flex: 1;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 13px;
-}
-
-/* BUTTONS -------------------------------------------------- */
-.vhc-btn {
-  background: var(--accent-green);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: var(--transition);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 140px;
-}
-
-.vhc-btn:hover {
-  background: var(--secondary-green);
-  transform: translateY(-1px);
-}
-
-.vhc-btn-icon {
-  font-size: 14px;
-}
-
-/* CREATE BATCH BUTTON -------------------------------------------------- */
-.vhc-create-batch-section {
-  margin-top: 30px;
-  padding-top: 30px;
-  border-top: 1px solid var(--border-color);
-  text-align: center;
-}
-
-.vhc-create-batch-btn {
-  background: var(--primary-green);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 14px 32px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: var(--transition);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-width: 200px;
-}
-
-.vhc-create-batch-btn:hover {
-  background: #0c2416;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13, 42, 26, 0.2);
-}
-
-/* TIMELINE SECTION -------------------------------------------------- */
-.vhc-timeline-header {
-  margin-bottom: 25px;
-}
-
-.vhc-timeline-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--primary-green);
-  margin: 0 0 8px;
-}
-
-.vhc-timeline-subtitle {
-  font-size: 14px;
-  color: var(--text-medium);
-  line-height: 1.5;
-}
-
-/* TIMELINE -------------------------------------------------- */
-.vhc-timeline-container {
-  position: relative;
-  padding-left: 30px;
-  margin-bottom: 30px;
-}
-
-.vhc-timeline-line {
-  position: absolute;
-  left: 15px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(to bottom, var(--accent-green), var(--border-color));
-}
-
-.vhc-timeline-item {
-  position: relative;
-  margin-bottom: 24px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  padding: 20px;
-  padding-left: 45px;
-  transition: var(--transition);
-  cursor: pointer;
-}
-
-.vhc-timeline-item:hover {
-  border-color: var(--accent-green);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.vhc-timeline-dot {
-  position: absolute;
-  left: -30px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-medium);
-  z-index: 2;
-}
-
-.vhc-timeline-dot.done {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
-  color: white;
-}
-
-.vhc-timeline-dot.current {
-  background: #fff8e1;
-  border-color: #ffb300;
-  color: #ff8f00;
-}
-
-.vhc-timeline-stage {
-  font-family: 'Poppins', sans-serif;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--primary-green);
-  margin: 0 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.vhc-timeline-stage-icon {
-  font-size: 16px;
-}
-
-.vhc-timeline-desc {
-  font-size: 13px;
-  color: var(--text-medium);
-  line-height: 1.5;
-  margin-bottom: 12px;
-}
-
-.vhc-timeline-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.vhc-timeline-status.done {
-  background: #e9f5eb;
-  color: var(--accent-green);
-  border: 1px solid #c8e6c9;
-}
-
-.vhc-timeline-status.done::before {
-  content: "✅";
-  font-size: 11px;
-}
-
-.vhc-timeline-status.current {
-  background: #fff3e0;
-  color: #ff8f00;
-  border: 1px solid #ffcc80;
-}
-
-.vhc-timeline-status.current::before {
-  content: "🔄";
-  font-size: 11px;
-}
-
-.vhc-timeline-status.waiting {
-  background: #f5f5f5;
-  color: var(--text-light);
-  border: 1px solid #e0e0e0;
-}
-
-.vhc-timeline-status.waiting::before {
-  content: "⏳";
-  font-size: 11px;
-}
-
-/* LIVE PREVIEW -------------------------------------------------- */
-.vhc-live-preview {
-  margin-top: 30px;
-  padding-top: 30px;
-  border-top: 1px solid var(--border-color);
-}
-
-.vhc-live-preview-title {
-  font-family: 'Poppins', sans-serif;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--primary-green);
-  margin: 0 0 20px;
-}
-
-.vhc-preview-container {
-  background: #f8fbf7;
-  border-radius: 8px;
-  padding: 24px;
-  border: 1px solid var(--border-color);
-}
-
-.vhc-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-  margin-bottom: 24px;
-}
-
-@media (max-width: 768px) {
-  .vhc-preview-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.vhc-preview-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.vhc-preview-label {
-  font-size: 12px;
-  color: var(--text-light);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.vhc-preview-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 20px;
-}
-
-.vhc-preview-empty {
-  color: var(--text-light);
-  font-style: italic;
-  font-weight: normal;
-  font-size: 13px;
-}
-
-.vhc-preview-gps {
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 12px;
-  color: var(--text-medium);
-}
-
-.vhc-preview-notes {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px dashed var(--border-color);
-}
-
-.vhc-notes-label {
-  font-size: 12px;
-  color: var(--text-light);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: 8px;
-}
-
-.vhc-notes-content {
-  font-size: 13px;
-  color: var(--text-dark);
-  line-height: 1.5;
-  background: white;
-  border-radius: 6px;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  min-height: 60px;
-}
-
-.vhc-preview-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-  padding: 16px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.vhc-preview-status-icon {
-  font-size: 20px;
-}
-
-.vhc-preview-status-text {
-  flex: 1;
-}
-
-.vhc-preview-status-title {
-  font-weight: 600;
-  color: var(--primary-green);
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-.vhc-preview-status-subtitle {
-  font-size: 12px;
-  color: var(--text-medium);
-}
-
-/* TOAST NOTIFICATION -------------------------------------------------- */
-.vhc-toast {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--primary-green);
-  color: white;
-  padding: 16px 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(13, 42, 26, 0.3);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 1000;
-  animation: slideIn 0.3s ease;
-  max-width: 350px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.vhc-toast-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.vhc-toast-content {
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-/* STATUS PILLS -------------------------------------------------- */
-.vhc-status-pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.vhc-status-complete {
-  background: #e9f5eb;
-  color: var(--accent-green);
-  border: 1px solid #c8e6c9;
-}
-
-.vhc-status-progress {
-  background: #fff3e0;
-  color: #ff8f00;
-  border: 1px solid #ffcc80;
-}
-
-.vhc-status-pending {
-  background: #f5f5f5;
-  color: var(--text-light);
-  border: 1px solid #e0e0e0;
-}
-`;
+import "../styles/Collector.css";
+import { Bell, X, CheckCircle, AlertCircle, MapPin, Camera } from 'lucide-react';
 
 const STAGE_DATA = [
   {
@@ -723,6 +35,49 @@ const STAGE_DATA = [
   }
 ];
 
+const NOTIFICATIONS = [
+  {
+    id: 1,
+    type: "admin",
+    title: "New Quality Standards Update",
+    message: "Updated AAA grading criteria effective from Nov 15th",
+    time: "2 hours ago",
+    read: false
+  },
+  {
+    id: 2,
+    type: "tester",
+    title: "Lab Test Results Ready",
+    message: "Batch BATCH-2024-7283 passed all quality tests",
+    time: "1 day ago",
+    read: false
+  },
+  {
+    id: 3,
+    type: "system",
+    title: "Weather Alert",
+    message: "Heavy rain predicted in South region tomorrow",
+    time: "2 days ago",
+    read: true
+  },
+  {
+    id: 4,
+    type: "admin",
+    title: "Monthly Collection Target",
+    message: "You've achieved 85% of monthly target",
+    time: "3 days ago",
+    read: true
+  },
+  {
+    id: 5,
+    type: "tester",
+    title: "Sample Rejection",
+    message: "Batch BATCH-2024-7251 rejected due to moisture content",
+    time: "5 days ago",
+    read: true
+  }
+];
+
 function App() {
   const [form, setForm] = useState({
     herb: "Tulsi (Holy Basil)",
@@ -735,17 +90,51 @@ function App() {
     notes: "Early morning harvest, no spray in last 30 days, leaves hand-plucked. Optimal sunlight exposure throughout growth cycle."
   });
 
-  const [currentStage, setCurrentStage] = useState(2);
-  const [stageStatus, setStageStatus] = useState(["done", "current", "waiting", "waiting", "waiting"]);
+  const [stage1Form, setStage1Form] = useState({
+    farmerName: "",
+    fid: "",
+    visitDate: "",
+    geotag: "",
+    notes: "",
+    species: "",
+    estimatedQty: "",
+    farmPhoto: null
+  });
+
+  const [stage5Form, setStage5Form] = useState({
+    batchId: "BATCH-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000),
+    finalHarvestDate: "",
+    finalQuantity: "",
+    sampleCollected: false,
+    finalPhoto: null,
+    finalGeotag: "",
+    dispatchAuth: false
+  });
+
+  const [currentStage, setCurrentStage] = useState(1);
+  const [stageStatus, setStageStatus] = useState(["current", "waiting", "waiting", "waiting", "waiting"]);
   const [toast, setToast] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [activeTab, setActiveTab] = useState("stage1");
 
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     setForm(f => ({ ...f, date: today }));
+    setStage1Form(s => ({ ...s, visitDate: today }));
+    setStage5Form(s => ({ ...s, finalHarvestDate: today }));
   }, []);
 
   const updateForm = (key, value) => {
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateStage1Form = (key, value) => {
+    setStage1Form(prev => ({ ...prev, [key]: value }));
+  };
+
+  const updateStage5Form = (key, value) => {
+    setStage5Form(prev => ({ ...prev, [key]: value }));
   };
 
   const handleGPS = () => {
@@ -755,28 +144,59 @@ function App() {
       updateForm("gps", newGPS);
       setToast("✅ GPS location captured!");
     }, 800);
-    
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const handleStage1GPS = () => {
+    setToast("📍 Capturing Farm GPS location...");
+    setTimeout(() => {
+      const newGPS = `${(Math.random() * 90).toFixed(6)}, ${(Math.random() * 180).toFixed(6)}`;
+      updateStage1Form("geotag", newGPS);
+      setToast("✅ Farm GPS location captured!");
+    }, 800);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const handleStage5GPS = () => {
+    setToast("📍 Capturing Final GPS location...");
+    setTimeout(() => {
+      const newGPS = `${(Math.random() * 90).toFixed(6)}, ${(Math.random() * 180).toFixed(6)}`;
+      updateStage5Form("finalGeotag", newGPS);
+      setToast("✅ Final GPS location captured!");
+    }, 800);
+    setTimeout(() => setToast(""), 3000);
+  };
+
+  const handlePhotoUpload = (stage, file) => {
+    if (stage === 1) {
+      updateStage1Form("farmPhoto", file);
+      setToast("✅ Farm photo uploaded successfully!");
+    } else if (stage === 5) {
+      updateStage5Form("finalPhoto", file);
+      setToast("✅ Final harvest photo uploaded!");
+    }
     setTimeout(() => setToast(""), 3000);
   };
 
   const handleStageClick = (stageId) => {
     setCurrentStage(stageId);
+    setActiveTab(`stage${stageId}`);
     setToast(`📋 Switched to Stage ${stageId}`);
     setTimeout(() => setToast(""), 3000);
   };
 
   const markStageDone = (stageId) => {
     const newStatus = [...stageStatus];
-    newStatus[stageId-1] = "done";
+    newStatus[stageId - 1] = "done";
     if (stageId < 5) newStatus[stageId] = "current";
     setStageStatus(newStatus);
-    
+
     setToast(`✅ Stage ${stageId} completed!`);
     setTimeout(() => setToast(""), 3000);
-    
+
     if (stageId === 5) {
       setTimeout(() => {
-        setToast("🎉 Batch completed!");
+        setToast("🎉 Batch completed and ready for dispatch!");
       }, 500);
     }
   };
@@ -784,14 +204,44 @@ function App() {
   const handleCreateBatch = () => {
     setToast("🌿 Creating new herb batch...");
     setTimeout(() => {
-      setToast("✅ New batch created: BATCH-2025-7421");
+      // Generate new batch ID
+      const newBatchId = `BATCH-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+      updateStage5Form("batchId", newBatchId);
+
+      setToast(`✅ New batch created: ${newBatchId}`);
+      // Move to stage 2
+      const newStatus = [...stageStatus];
+      newStatus[0] = "done";
+      newStatus[1] = "current";
+      setStageStatus(newStatus);
+      setCurrentStage(2);
+      setActiveTab("stage2");
     }, 1000);
-    
+
     setTimeout(() => setToast(""), 4000);
   };
 
+  const toggleNotifications = () => {
+    setShowNotifications(!showNotifications);
+    // Mark all as read when opening
+    if (!showNotifications) {
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    }
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "admin": return "👨‍💼";
+      case "tester": return "🔬";
+      case "system": return "⚙️";
+      default: return "📢";
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   const getStatusText = (status) => {
-    switch(status) {
+    switch (status) {
       case "done": return "COMPLETED";
       case "current": return "IN PROGRESS";
       default: return "PENDING";
@@ -800,17 +250,17 @@ function App() {
 
   const renderTimelineItem = (stage) => {
     const status = stageStatus[stage.id - 1];
-    
+
     return (
-      <div 
-        key={stage.id} 
-        className="vhc-timeline-item"
+      <div
+        key={stage.id}
+        className={`vhc-timeline-item ${status === "current" ? "vhc-timeline-item-current" : ""}`}
         onClick={() => handleStageClick(stage.id)}
       >
         <div className={`vhc-timeline-dot ${status}`}>
           {status === "done" ? "✓" : stage.id}
         </div>
-        <div>
+        <div className="vhc-timeline-content">
           <div className="vhc-timeline-stage">
             <span className="vhc-timeline-stage-icon">{stage.icon}</span>
             {stage.title}
@@ -822,23 +272,341 @@ function App() {
             {getStatusText(status)}
           </div>
         </div>
+        {status === "current" && (
+          <button
+            className="vhc-mark-done-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              markStageDone(stage.id);
+            }}
+          >
+            Mark Complete
+          </button>
+        )}
       </div>
     );
   };
 
+  const renderStageContent = () => {
+    switch (currentStage) {
+      case 1:
+        return (
+          <div className="vhc-stage-content">
+            <h3 className="vhc-stage-title">Stage 1: Plantation Documentation</h3>
+            <p className="vhc-stage-subtitle">Collect initial farm data and documentation</p>
+
+            <div className="vhc-form-grid">
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Farmer Name <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="text"
+                  value={stage1Form.farmerName}
+                  onChange={(e) => updateStage1Form("farmerName", e.target.value)}
+                  placeholder="Enter farmer's full name"
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Farmer ID (FID) <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="text"
+                  value={stage1Form.fid}
+                  onChange={(e) => updateStage1Form("fid", e.target.value)}
+                  placeholder="Enter FID"
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Visit Date <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="date"
+                  value={stage1Form.visitDate}
+                  onChange={(e) => updateStage1Form("visitDate", e.target.value)}
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Herb Species <span className="vhc-required">*</span>
+                </label>
+                <select
+                  className="vhc-select"
+                  value={stage1Form.species}
+                  onChange={(e) => updateStage1Form("species", e.target.value)}
+                >
+                  <option value="">Select species</option>
+                  <option value="Tulsi (Holy Basil)">Tulsi (Holy Basil)</option>
+                  <option value="Ashwagandha">Ashwagandha</option>
+                  <option value="Neem">Neem</option>
+                  <option value="Brahmi">Brahmi</option>
+                  <option value="Turmeric">Turmeric</option>
+                </select>
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Estimated Quantity (kg) <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="number"
+                  value={stage1Form.estimatedQty}
+                  min="0"
+                  step="0.1"
+                  placeholder="e.g., 25.5"
+                  onChange={(e) => updateStage1Form("estimatedQty", e.target.value)}
+                />
+              </div>
+
+              <div className="vhc-field vhc-field-full">
+                <label className="vhc-label">
+                  GPS Location <span className="vhc-required">*</span>
+                </label>
+                <div className="vhc-gps-row">
+                  <input
+                    className="vhc-input vhc-gps-input"
+                    value={stage1Form.geotag}
+                    readOnly
+                    placeholder="Click Capture GPS to get location"
+                  />
+                  <button
+                    type="button"
+                    className="vhc-btn vhc-btn-secondary"
+                    onClick={handleStage1GPS}
+                  >
+                    <MapPin size={16} /> Capture GPS
+                  </button>
+                </div>
+              </div>
+
+              <div className="vhc-field vhc-field-full">
+                <label className="vhc-label">Farm Photo</label>
+                <div className="vhc-photo-upload">
+                  {stage1Form.farmPhoto ? (
+                    <div className="vhc-photo-preview">
+                      <img src={URL.createObjectURL(stage1Form.farmPhoto)} alt="Farm preview" />
+                      <button
+                        className="vhc-remove-photo"
+                        onClick={() => updateStage1Form("farmPhoto", null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="vhc-upload-area">
+                      <Camera size={24} />
+                      <span>Click to upload farm photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePhotoUpload(1, e.target.files[0])}
+                        hidden
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="vhc-field vhc-field-full">
+                <label className="vhc-label">Notes & Observations</label>
+                <textarea
+                  className="vhc-textarea"
+                  value={stage1Form.notes}
+                  onChange={(e) => updateStage1Form("notes", e.target.value)}
+                  placeholder="Record your observations about soil health, plant condition, pests, etc."
+                  rows="4"
+                />
+              </div>
+            </div>
+
+            <div className="vhc-create-batch-section">
+              <button
+                className="vhc-create-batch-btn"
+                onClick={handleCreateBatch}
+                disabled={!stage1Form.farmerName || !stage1Form.fid || !stage1Form.species}
+              >
+                <CheckCircle size={20} /> Create New Herb Batch
+              </button>
+            </div>
+          </div>
+        );
+
+      case 5:
+        return (
+          <div className="vhc-stage-content">
+            <h3 className="vhc-stage-title">Stage 5: Final Verification</h3>
+            <p className="vhc-stage-subtitle">Complete final documentation before dispatch</p>
+
+            <div className="vhc-form-grid">
+              <div className="vhc-field">
+                <label className="vhc-label">Batch ID</label>
+                <input
+                  className="vhc-input"
+                  type="text"
+                  value={stage5Form.batchId}
+                  readOnly
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Final Harvest Date <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="date"
+                  value={stage5Form.finalHarvestDate}
+                  onChange={(e) => updateStage5Form("finalHarvestDate", e.target.value)}
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">
+                  Final Quantity (kg) <span className="vhc-required">*</span>
+                </label>
+                <input
+                  className="vhc-input"
+                  type="number"
+                  value={stage5Form.finalQuantity}
+                  min="0"
+                  step="0.1"
+                  placeholder="Enter actual harvested quantity"
+                  onChange={(e) => updateStage5Form("finalQuantity", e.target.value)}
+                />
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">Sample Collected</label>
+                <div className="vhc-checkbox-group">
+                  <label className="vhc-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={stage5Form.sampleCollected}
+                      onChange={(e) => updateStage5Form("sampleCollected", e.target.checked)}
+                      className="vhc-checkbox"
+                    />
+                    <span>Lab sample collected</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="vhc-field vhc-field-full">
+                <label className="vhc-label">
+                  Final GPS Location <span className="vhc-required">*</span>
+                </label>
+                <div className="vhc-gps-row">
+                  <input
+                    className="vhc-input vhc-gps-input"
+                    value={stage5Form.finalGeotag}
+                    readOnly
+                    placeholder="Click Capture GPS to get location"
+                  />
+                  <button
+                    type="button"
+                    className="vhc-btn vhc-btn-secondary"
+                    onClick={handleStage5GPS}
+                  >
+                    <MapPin size={16} /> Capture GPS
+                  </button>
+                </div>
+              </div>
+
+              <div className="vhc-field vhc-field-full">
+                <label className="vhc-label">Final Harvest Photo</label>
+                <div className="vhc-photo-upload">
+                  {stage5Form.finalPhoto ? (
+                    <div className="vhc-photo-preview">
+                      <img src={URL.createObjectURL(stage5Form.finalPhoto)} alt="Final harvest preview" />
+                      <button
+                        className="vhc-remove-photo"
+                        onClick={() => updateStage5Form("finalPhoto", null)}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="vhc-upload-area">
+                      <Camera size={24} />
+                      <span>Click to upload final harvest photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePhotoUpload(5, e.target.files[0])}
+                        hidden
+                      />
+                    </label>
+                  )}
+                </div>
+                <div className="verify">
+                  <button onClick={() => alert('Aswaganda Verified.')}>Verify</button>
+                </div>
+
+              </div>
+
+              <div className="vhc-field">
+                <label className="vhc-label">Dispatch Authorization</label>
+                <div className="vhc-checkbox-group">
+                  <label className="vhc-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={stage5Form.dispatchAuth}
+                      onChange={(e) => updateStage5Form("dispatchAuth", e.target.checked)}
+                      className="vhc-checkbox"
+                    />
+                    <span>Authorize dispatch</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="vhc-final-verification">
+              <button
+                className="vhc-create-batch-btn"
+                onClick={() => markStageDone(5)}
+                disabled={!stage5Form.finalHarvestDate || !stage5Form.finalQuantity}
+              >
+                <CheckCircle size={20} /> Complete Final Verification
+              </button>
+              <p className="vhc-verification-note">
+                Note: Once verified, batch will be locked and sent for processing
+              </p>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div className="vhc-stage-content">
+            <h3 className="vhc-stage-title">Stage {currentStage}: {STAGE_DATA[currentStage - 1]?.title}</h3>
+            <p className="vhc-stage-subtitle">{STAGE_DATA[currentStage - 1]?.description}</p>
+            <div className="vhc-stage-placeholder">
+              <p>Stage {currentStage} content will appear here. Click "Mark Complete" when done.</p>
+            </div>
+          </div>
+        );
+    }
+  };
+
   return (
     <>
-      <style>{styles}</style>
-
       {/* Toast Notification */}
       {toast && (
         <div className="vhc-toast">
           <span className="vhc-toast-icon">
-            {toast.includes("📍") ? "📍" : 
-             toast.includes("✅") ? "✅" : 
-             toast.includes("📋") ? "📋" : 
-             toast.includes("🎉") ? "🎉" : 
-             toast.includes("🌿") ? "🌿" : "📡"}
+            {toast.includes("📍") ? "📍" :
+              toast.includes("✅") ? "✅" :
+                toast.includes("📋") ? "📋" :
+                  toast.includes("🎉") ? "🎉" :
+                    toast.includes("🌿") ? "🌿" : "📡"}
           </span>
           <div className="vhc-toast-content">
             {toast.replace(/[📍✅📋🎉🌿📡]/g, '').trim()}
@@ -846,20 +614,120 @@ function App() {
         </div>
       )}
 
-      {/* HERO SECTION */}
-      <header className="vhc-hero">
-        <div className="vhc-hero-content">
-          <div className="vhc-profile-section">
-            <div className="vhc-profile-photo">
-              🌿
+      {/* NAVBAR */}
+      <nav className="vhc-navbar">
+        <div className="vhc-navbar-left">
+          <div className="vhc-nav-logo">🌿 VirtuHerbChain</div>
+        </div>
+
+        <div className="vhc-navbar-right">
+          <div className="vhc-notification-container">
+            <button
+              className="vhc-notification-btn"
+              onClick={toggleNotifications}
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="vhc-notification-badge">{unreadCount}</span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="vhc-notification-dropdown">
+                <div className="vhc-notification-header">
+                  <h4>Notifications</h4>
+                  <button
+                    className="vhc-notification-close"
+                    onClick={toggleNotifications}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="vhc-notification-tabs">
+                  <button
+                    className={`vhc-notification-tab ${activeTab === 'all' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('all')}
+                  >
+                    All
+                  </button>
+                  <button
+                    className={`vhc-notification-tab ${activeTab === 'admin' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('admin')}
+                  >
+                    Admin
+                  </button>
+                  <button
+                    className={`vhc-notification-tab ${activeTab === 'tester' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('tester')}
+                  >
+                    Tester
+                  </button>
+                </div>
+
+                <div className="vhc-notification-list">
+                  {notifications
+                    .filter(n => activeTab === 'all' || n.type === activeTab)
+                    .map(notification => (
+                      <div
+                        key={notification.id}
+                        className={`vhc-notification-item ${!notification.read ? 'unread' : ''}`}
+                      >
+                        <div className="vhc-notification-icon">
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="vhc-notification-content">
+                          <div className="vhc-notification-title">
+                            {notification.title}
+                          </div>
+                          <div className="vhc-notification-message">
+                            {notification.message}
+                          </div>
+                          <div className="vhc-notification-time">
+                            {notification.time}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="vhc-user-profile">
+            <div className="vhc-user-avatar">CO</div>
+            <div className="vhc-user-info">
+              <div className="vhc-user-name">Collector #7421</div>
+              <div className="vhc-user-role">Senior Field Officer</div>
             </div>
-            <div className="vhc-hero-text">
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <header className="vhc-header">
+        <div className="vhc-hero-image">
+          <img
+            src="https://media.assettype.com/knocksense%2F2022-08%2F05cd04ec-388c-40d7-ac05-c55b02d14a2d%2F5935_8_10_2021_19_36_13_2_08102021YVU1.jpeg"
+            alt="Herb farm landscape"
+          />
+          <div className="vhc-hero-overlay">
+            <div className="vhc-hero-content">
               <h1 className="vhc-hero-title">VirtuHerbChain Collector Portal</h1>
               <p className="vhc-hero-subtitle">Ayurvedic Traceability & Quality Assurance System</p>
-              <div className="vhc-hero-info">
-                <div className="vhc-collector-id">Collector ID: COL-7421 • Region: South</div>
-                <div className="vhc-collector-role">Senior Field Officer</div>
-                <div className="vhc-collector-login">Last login: Today, 09:42 AM</div>
+              <div className="vhc-hero-stats">
+                <div className="vhc-stat">
+                  <div className="vhc-stat-value">18</div>
+                  <div className="vhc-stat-label">Active Batches</div>
+                </div>
+                <div className="vhc-stat">
+                  <div className="vhc-stat-value">94%</div>
+                  <div className="vhc-stat-label">Quality Score</div>
+                </div>
+                <div className="vhc-stat">
+                  <div className="vhc-stat-value">28</div>
+                  <div className="vhc-stat-label">Farmers</div>
+                </div>
               </div>
             </div>
           </div>
@@ -869,134 +737,9 @@ function App() {
       {/* MAIN CONTENT */}
       <main className="vhc-main">
         <div className="vhc-grid">
-          {/* LEFT PANEL: FORM */}
-          <section className="vhc-card">
-            <div className="vhc-form-header">
-              <h2 className="vhc-card-title">Create New Herb Batch</h2>
-              <p className="vhc-card-sub">
-                Record harvest details for traceability, quality scoring, and farmer incentives.
-              </p>
-            </div>
-
-            <div className="vhc-form-grid">
-              <div className="vhc-field">
-                <label className="vhc-label">
-                  Herb Name <span className="vhc-required">*</span>
-                </label>
-                <select
-                  className="vhc-select"
-                  value={form.herb}
-                  onChange={(e) => updateForm("herb", e.target.value)}
-                >
-                  <option value="Tulsi (Holy Basil)">Tulsi (Holy Basil)</option>
-                  <option value="Ashwagandha">Ashwagandha</option>
-                  <option value="Neem">Neem</option>
-                  <option value="Brahmi">Brahmi</option>
-                  <option value="Turmeric (Organic)">Turmeric (Organic)</option>
-                </select>
-              </div>
-
-              <div className="vhc-field">
-                <label className="vhc-label">
-                  Quantity (kg) <span className="vhc-required">*</span>
-                </label>
-                <input
-                  className="vhc-input"
-                  type="number"
-                  value={form.qty}
-                  min="0"
-                  step="0.1"
-                  placeholder="e.g., 25.5"
-                  onChange={(e) => updateForm("qty", e.target.value)}
-                />
-              </div>
-
-              <div className="vhc-field">
-                <label className="vhc-label">
-                  Harvest Date <span className="vhc-required">*</span>
-                </label>
-                <input
-                  className="vhc-input"
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => updateForm("date", e.target.value)}
-                />
-              </div>
-
-              <div className="vhc-field">
-                <label className="vhc-label">Plot / Farm ID</label>
-                <input
-                  className="vhc-input"
-                  value={form.plot}
-                  onChange={(e) => updateForm("plot", e.target.value)}
-                  placeholder="e.g., Plot 5B – Valley North"
-                />
-              </div>
-
-              <div className="vhc-field">
-                <label className="vhc-label">Quality Grade</label>
-                <select
-                  className="vhc-select"
-                  value={form.quality}
-                  onChange={(e) => updateForm("quality", e.target.value)}
-                >
-                  <option value="Premium (AAA)">Premium (AAA)</option>
-                  <option value="Grade A (AA)">Grade A (AA)</option>
-                  <option value="Grade B (A)">Grade B (A)</option>
-                </select>
-              </div>
-
-              <div className="vhc-field">
-                <label className="vhc-label">Weather at Harvest</label>
-                <input
-                  className="vhc-input"
-                  value={form.weather}
-                  onChange={(e) => updateForm("weather", e.target.value)}
-                  placeholder="e.g., Clear · 26°C · Humidity 65%"
-                />
-              </div>
-
-              <div className="vhc-field vhc-field-full">
-                <label className="vhc-label">
-                  GPS Location <span className="vhc-required">*</span>
-                </label>
-                <div className="vhc-gps-row">
-                  <input 
-                    className="vhc-input vhc-gps-input" 
-                    value={form.gps} 
-                    readOnly 
-                  />
-                  <button
-                    type="button"
-                    className="vhc-btn"
-                    onClick={handleGPS}
-                  >
-                    <span className="vhc-btn-icon">📍</span> Capture GPS
-                  </button>
-                </div>
-              </div>
-
-              <div className="vhc-field vhc-field-full">
-                <label className="vhc-label">Collector Notes</label>
-                <textarea
-                  className="vhc-textarea"
-                  value={form.notes}
-                  onChange={(e) => updateForm("notes", e.target.value)}
-                  placeholder="Harvest observations and special conditions..."
-                  rows="3"
-                />
-              </div>
-            </div>
-
-            {/* CREATE BATCH BUTTON */}
-            <div className="vhc-create-batch-section">
-              <button
-                className="vhc-create-batch-btn"
-                onClick={handleCreateBatch}
-              >
-                <span className="vhc-btn-icon">🌿</span> Create New Herb Batch
-              </button>
-            </div>
+          {/* LEFT PANEL: STAGE CONTENT */}
+          <section className="vhc-card vhc-stage-card">
+            {renderStageContent()}
           </section>
 
           {/* RIGHT PANEL: TIMELINE & PREVIEW */}
@@ -1018,73 +761,190 @@ function App() {
             {/* LIVE PREVIEW */}
             <div className="vhc-live-preview">
               <h3 className="vhc-live-preview-title">Live Batch Preview</h3>
-              
-              <div className="vhc-preview-container">
-                <div className="vhc-preview-grid">
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">Herb Name</div>
-                    <div className="vhc-preview-value">
-                      {form.herb || <span className="vhc-preview-empty">Not selected</span>}
-                    </div>
-                  </div>
-                  
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">Harvest Date</div>
-                    <div className="vhc-preview-value">
-                      {form.date ? new Date(form.date).toLocaleDateString('en-GB') : 
-                       <span className="vhc-preview-empty">Not set</span>}
-                    </div>
-                  </div>
-                  
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">Quality Grade</div>
-                    <div className="vhc-preview-value">
-                      {form.quality || <span className="vhc-preview-empty">Not graded</span>}
-                    </div>
-                  </div>
-                  
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">Plot / Farm ID</div>
-                    <div className="vhc-preview-value">
-                      {form.plot || <span className="vhc-preview-empty">Not specified</span>}
-                    </div>
-                  </div>
-                  
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">Weather</div>
-                    <div className="vhc-preview-value">
-                      {form.weather || <span className="vhc-preview-empty">Not recorded</span>}
-                    </div>
-                  </div>
-                  
-                  <div className="vhc-preview-item">
-                    <div className="vhc-preview-label">GPS Location</div>
-                    <div className="vhc-preview-value vhc-preview-gps">
-                      {form.gps === "Not captured" ? 
-                        <span className="vhc-preview-empty">Not captured</span> : 
-                        form.gps}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="vhc-preview-notes">
-                  <div className="vhc-notes-label">Collector Notes</div>
-                  <div className="vhc-notes-content">
-                    {form.notes || <span className="vhc-preview-empty">No notes added</span>}
+              <div className="vhc-preview-container">
+                {currentStage === 1 ? (
+                  <div className="vhc-preview-grid">
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Farmer Name</div>
+                      <div className="vhc-preview-value">
+                        {stage1Form.farmerName || <span className="vhc-preview-empty">Not entered</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Farmer ID</div>
+                      <div className="vhc-preview-value">
+                        {stage1Form.fid || <span className="vhc-preview-empty">Not entered</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Visit Date</div>
+                      <div className="vhc-preview-value">
+                        {stage1Form.visitDate ? new Date(stage1Form.visitDate).toLocaleDateString('en-GB') :
+                          <span className="vhc-preview-empty">Not set</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Species</div>
+                      <div className="vhc-preview-value">
+                        {stage1Form.species || <span className="vhc-preview-empty">Not selected</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Estimated Qty</div>
+                      <div className="vhc-preview-value">
+                        {stage1Form.estimatedQty ? `${stage1Form.estimatedQty} kg` :
+                          <span className="vhc-preview-empty">Not estimated</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">GPS Location</div>
+                      <div className="vhc-preview-value vhc-preview-gps">
+                        {stage1Form.geotag || <span className="vhc-preview-empty">Not captured</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-notes">
+                      <div className="vhc-notes-label">Observations</div>
+                      <div className="vhc-notes-content">
+                        {stage1Form.notes || <span className="vhc-preview-empty">No observations added</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : currentStage === 5 ? (
+                  <div className="vhc-preview-grid">
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Batch ID</div>
+                      <div className="vhc-preview-value vhc-preview-batchid">
+                        {stage5Form.batchId}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Final Harvest Date</div>
+                      <div className="vhc-preview-value">
+                        {stage5Form.finalHarvestDate ? new Date(stage5Form.finalHarvestDate).toLocaleDateString('en-GB') :
+                          <span className="vhc-preview-empty">Not set</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Final Quantity</div>
+                      <div className="vhc-preview-value">
+                        {stage5Form.finalQuantity ? `${stage5Form.finalQuantity} kg` :
+                          <span className="vhc-preview-empty">Not recorded</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Sample Collected</div>
+                      <div className="vhc-preview-value">
+                        <span className={`vhc-preview-status-badge ${stage5Form.sampleCollected ? 'success' : 'pending'}`}>
+                          {stage5Form.sampleCollected ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Dispatch Auth</div>
+                      <div className="vhc-preview-value">
+                        <span className={`vhc-preview-status-badge ${stage5Form.dispatchAuth ? 'success' : 'pending'}`}>
+                          {stage5Form.dispatchAuth ? 'Authorized' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Final GPS</div>
+                      <div className="vhc-preview-value vhc-preview-gps">
+                        {stage5Form.finalGeotag || <span className="vhc-preview-empty">Not captured</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-photo">
+                      <div className="vhc-notes-label">Final Photo</div>
+                      <div className="vhc-photo-status">
+                        {stage5Form.finalPhoto ? (
+                          <span className="vhc-photo-uploaded">✅ Photo uploaded</span>
+                        ) : (
+                          <span className="vhc-preview-empty">No photo uploaded</span>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                ) : (
+                  <div className="vhc-preview-grid">
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Herb Name</div>
+                      <div className="vhc-preview-value">
+                        {form.herb || <span className="vhc-preview-empty">Not selected</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Harvest Date</div>
+                      <div className="vhc-preview-value">
+                        {form.date ? new Date(form.date).toLocaleDateString('en-GB') :
+                          <span className="vhc-preview-empty">Not set</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Quality Grade</div>
+                      <div className="vhc-preview-value">
+                        {form.quality || <span className="vhc-preview-empty">Not graded</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Quantity</div>
+                      <div className="vhc-preview-value">
+                        {form.qty ? `${form.qty} kg` : <span className="vhc-preview-empty">Not specified</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">Weather</div>
+                      <div className="vhc-preview-value">
+                        {form.weather || <span className="vhc-preview-empty">Not recorded</span>}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-item">
+                      <div className="vhc-preview-label">GPS Location</div>
+                      <div className="vhc-preview-value vhc-preview-gps">
+                        {form.gps === "Not captured" ?
+                          <span className="vhc-preview-empty">Not captured</span> :
+                          form.gps}
+                      </div>
+                    </div>
+
+                    <div className="vhc-preview-notes">
+                      <div className="vhc-notes-label">Collector Notes</div>
+                      <div className="vhc-notes-content">
+                        {form.notes || <span className="vhc-preview-empty">No notes added</span>}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="vhc-preview-status">
                   <div className="vhc-preview-status-icon">
-                    {stageStatus[currentStage-1] === "done" ? "✅" : 
-                     stageStatus[currentStage-1] === "current" ? "🔄" : "⏳"}
+                    {stageStatus[currentStage - 1] === "done" ? "✅" :
+                      stageStatus[currentStage - 1] === "current" ? "🔄" : "⏳"}
                   </div>
                   <div className="vhc-preview-status-text">
                     <div className="vhc-preview-status-title">
-                      Stage {currentStage}: {STAGE_DATA[currentStage-1]?.title}
+                      Stage {currentStage}: {STAGE_DATA[currentStage - 1]?.title}
                     </div>
                     <div className="vhc-preview-status-subtitle">
-                      Status: {getStatusText(stageStatus[currentStage-1])}
+                      Status: {getStatusText(stageStatus[currentStage - 1])}
                     </div>
                   </div>
                 </div>
