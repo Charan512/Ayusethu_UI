@@ -1,37 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../styles/Collector.css";
 import { Bell, X, CheckCircle, AlertCircle, MapPin, Camera } from 'lucide-react';
 
 const STAGE_DATA = [
   {
     id: 1,
-    title: "Plantation Documentation",
-    description: "Initial plantation images, leaf health verification and geo-tagging for origin trail",
-    icon: "📸"
+    title: "Stage 1",
   },
   {
     id: 2,
-    title: "Farmer Engagement",
-    description: "Farmer receives instructions, safety guidelines and schedule via SMS/App",
-    icon: "👨‍🌾"
+    title: "Stage 2",
   },
   {
     id: 3,
-    title: "Growth Verification",
-    description: "On-field growth monitoring and quality assessment by collector",
-    icon: "🌱"
+    title: "Stage 3",
   },
   {
     id: 4,
-    title: "Harvest Scheduling",
-    description: "Harvest timing coordination and equipment preparation with farmer",
-    icon: "📅"
+    title: "Stage 4",
   },
   {
     id: 5,
-    title: "Final Verification",
-    description: "Final harvest images, drying verification & dispatch authorization",
-    icon: "✅"
+    title: "Stage 5",
   }
 ];
 
@@ -116,7 +106,27 @@ function App() {
   const [toast, setToast] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [showProfile, setShowProfile] = useState(false);
   const [activeTab, setActiveTab] = useState("stage1");
+
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfile(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -221,12 +231,31 @@ function App() {
     setTimeout(() => setToast(""), 4000);
   };
 
-  const toggleNotifications = () => {
-    setShowNotifications(!showNotifications);
-    // Mark all as read when opening
-    if (!showNotifications) {
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const toggleNotificationDropdown = () => {
+    const newShowState = !showNotifications;
+    setShowNotifications(newShowState);
+    setShowProfile(false);
+    
+    // Mark all as read when opening notifications
+    if (newShowState) {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     }
+  };
+
+  const toggleProfileDropdown = () => {
+    setShowProfile(!showProfile);
+    setShowNotifications(false);
+  };
+
+  const handleLogout = () => {
+    console.log("Logout initiated");
+    alert("Logout successful");
+  };
+
+  const handleMarkNotificationRead = (id) => {
+    setNotifications(prev => prev.map(n =>
+      n.id === id ? { ...n, read: true } : n
+    ));
   };
 
   const getNotificationIcon = (type) => {
@@ -238,8 +267,6 @@ function App() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
   const getStatusText = (status) => {
     switch (status) {
       case "done": return "COMPLETED";
@@ -247,6 +274,8 @@ function App() {
       default: return "PENDING";
     }
   };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const renderTimelineItem = (stage) => {
     const status = stageStatus[stage.id - 1];
@@ -262,7 +291,7 @@ function App() {
         </div>
         <div className="vhc-timeline-content">
           <div className="vhc-timeline-stage">
-            <span className="vhc-timeline-stage-icon">{stage.icon}</span>
+            <span className="vhc-timeline-stage-icon"></span>
             {stage.title}
           </div>
           <div className="vhc-timeline-desc">
@@ -621,10 +650,10 @@ function App() {
         </div>
 
         <div className="vhc-navbar-right">
-          <div className="vhc-notification-container">
+          <div className="vhc-notification-container" ref={notificationRef}>
             <button
               className="vhc-notification-btn"
-              onClick={toggleNotifications}
+              onClick={toggleNotificationDropdown}
             >
               <Bell size={20} />
               {unreadCount > 0 && (
@@ -638,19 +667,13 @@ function App() {
                   <h4>Notifications</h4>
                   <button
                     className="vhc-notification-close"
-                    onClick={toggleNotifications}
+                    onClick={toggleNotificationDropdown}
                   >
                     <X size={16} />
                   </button>
                 </div>
 
                 <div className="vhc-notification-tabs">
-                  <button
-                    className={`vhc-notification-tab ${activeTab === 'all' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('all')}
-                  >
-                    All
-                  </button>
                   <button
                     className={`vhc-notification-tab ${activeTab === 'admin' ? 'active' : ''}`}
                     onClick={() => setActiveTab('admin')}
@@ -687,19 +710,83 @@ function App() {
                             {notification.time}
                           </div>
                         </div>
+                        <button
+                          className="vhc-mark-read-btn"
+                          onClick={() => handleMarkNotificationRead(notification.id)}
+                        >
+                          Mark Read
+                        </button>
                       </div>
                     ))}
                 </div>
+                
               </div>
             )}
           </div>
 
-          <div className="vhc-user-profile">
-            <div className="vhc-user-avatar">CO</div>
-            <div className="vhc-user-info">
-              <div className="vhc-user-name">Collector #7421</div>
-              <div className="vhc-user-role">Senior Field Officer</div>
-            </div>
+          <div className="vhc-user-profile-container" ref={profileRef}>
+            <button
+              className="vhc-user-profile-btn"
+              onClick={toggleProfileDropdown}
+            >
+                <div className="animated-avatar-profile">
+                  <img src={"https://img.freepik.com/premium-photo/young-optimistic-woman-doctor-is-holding-clipboard-her-hands-while-standing-sunny-clinic-portrait-friendly-female-physician-with-stethoscope-perfect-medical-service-hospital-me_665183-12973.jpg"} alt="Profile" />
+                </div>
+            </button>
+
+            {showProfile && (
+              <div className="vhc-profile-dropdown">
+                <div className="vhc-profile-header">
+                  <div className="vhc-profile-avatar-lg">CO</div>
+                  <div className="vhc-profile-details">
+                    <h4>Collector #7421</h4>
+                    <p>Senior Field Officer</p>
+                    <div className="vhc-profile-badges">
+                      <span className="vhc-profile-badge">ID: COL-7421</span>
+                      <span className="vhc-profile-badge active">Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="vhc-profile-stats">
+                  <div className="vhc-stat-item">
+                    <div className="vhc-stat-icon">📦</div>
+                    <div>
+                      <div className="vhc-stat-label">Batches Today</div>
+                      <div className="vhc-stat-value">8</div>
+                    </div>
+                  </div>
+                  <div className="vhc-stat-item">
+                    <div className="vhc-stat-icon">🎯</div>
+                    <div>
+                      <div className="vhc-stat-label">Success Rate</div>
+                      <div className="vhc-stat-value">94%</div>
+                    </div>
+                  </div>
+                  <div className="vhc-stat-item">
+                    <div className="vhc-stat-icon">👨‍🌾</div>
+                    <div>
+                      <div className="vhc-stat-label">Active Farmers</div>
+                      <div className="vhc-stat-value">28</div>
+                    </div>
+                  </div>
+                  <div className="vhc-stat-item">
+                    <div className="vhc-stat-icon">🏆</div>
+                    <div>
+                      <div className="vhc-stat-label">Certified Farms</div>
+                      <div className="vhc-stat-value">15</div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  className="vhc-logout-btn"
+                  onClick={handleLogout}
+                >
+                  <span>🚪</span> Log Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -708,29 +795,9 @@ function App() {
       <header className="vhc-header">
         <div className="vhc-hero-image">
           <img
-            src="https://media.assettype.com/knocksense%2F2022-08%2F05cd04ec-388c-40d7-ac05-c55b02d14a2d%2F5935_8_10_2021_19_36_13_2_08102021YVU1.jpeg"
+            src="https://img.freepik.com/premium-photo/indian-farmer-with-agronomist-cotton-field-showing-some-information-tab_54391-2389.jpg"
             alt="Herb farm landscape"
           />
-          <div className="vhc-hero-overlay">
-            <div className="vhc-hero-content">
-              <h1 className="vhc-hero-title">VirtuHerbChain Collector Portal</h1>
-              <p className="vhc-hero-subtitle">Ayurvedic Traceability & Quality Assurance System</p>
-              <div className="vhc-hero-stats">
-                <div className="vhc-stat">
-                  <div className="vhc-stat-value">18</div>
-                  <div className="vhc-stat-label">Active Batches</div>
-                </div>
-                <div className="vhc-stat">
-                  <div className="vhc-stat-value">94%</div>
-                  <div className="vhc-stat-label">Quality Score</div>
-                </div>
-                <div className="vhc-stat">
-                  <div className="vhc-stat-value">28</div>
-                  <div className="vhc-stat-label">Farmers</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </header>
 
