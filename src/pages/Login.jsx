@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import styles from "../styles/Login.module.css";
 
 export default function LoginPage() {
-    const roles = ["User", "Collector", "Tester", "Manufacturer", "Admin", "Farmer"];
+    const roles = ["User", "Collector", "Tester", "Manufacturer", "Admin"];
     const [activeRole, setActiveRole] = useState("User");
     const [showRegister, setShowRegister] = useState(false);
 
@@ -12,9 +12,6 @@ export default function LoginPage() {
 
     const handleLogin = () => {
         switch (activeRole) {
-            case "User":
-                navigate("/User");
-                break;
             case "Collector":
                 navigate("/Collector");
                 break;
@@ -104,13 +101,6 @@ export default function LoginPage() {
                                         <input type="file" accept="image/*" />
                                     </>
                                 )}
-                                {activeRole === "Farmer" && <input type="text" placeholder="Plot ID" />}
-
-                                <button className={styles.btn}>Register</button>
-
-                                <p className={styles.switchText}>
-                                    Already have an account? <span onClick={() => setShowRegister(false)}>Login</span>
-                                </p>
                             </motion.div>
                         ) : (
                             // LOGIN SECTION

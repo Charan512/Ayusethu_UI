@@ -19,6 +19,7 @@ body {
 
 /* Container for full width */
 .vhc-container {
+    margin-top:0px;
   width: 100vw;
   max-width: 100%;
   overflow-x: hidden;

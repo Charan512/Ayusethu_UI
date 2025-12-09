@@ -1,554 +1,369 @@
-// src/App.js
 import React, { useState } from "react";
-import BarcodeScannerComponent from "react-qr-barcode-scanner";
 import "../styles/User.css";
 
-/**
- * Dummy backend data – in real app this comes from API / DB / blockchain.
- */
+// Icons
+import { FaCamera, FaMicrophone, FaCheckCircle, FaLeaf, FaSeedling, FaCertificate, FaFlask, FaIndustry } from 'react-icons/fa';
 
-const HERB_DB = {
+const HERB_JOURNEY = {
   "1": {
-    code: "1",
-    name: "Tulasi (Holy Basil)",
-    farmerName: "V. Narayana Reddy",
-    region: "Tirupati Hills, Andhra Pradesh",
-    image: "https://images.unsplash.com/photo-1524593419931-1a1152d41f89?auto=format&fit=crop&w=900&q=80",
-    qualityGrade: "A+",
-    purity: "99.4% (lab tested, pesticide-free)",
-    harvestDate: "2025-01-12",
-    dryingMethod: "Shade drying, 3 days, 35°C max",
-    moisture: "7.8%",
+    name: "Tulasi Drops",
     batchId: "TUL-AP-2025-01-12-07",
-    processingStatus: "Cleaned, cut, pre-sieved; ready for milling",
-    description:
-      "Bright green leaves, strong aroma, clean stems. No visible pests or foreign matter. Suitable for internal use formulations.",
-  },
-  "2": {
-    code: "2",
-    name: "Ashwagandha (Withania somnifera)",
-    farmerName: "S. Kavya",
-    region: "Solapur, Maharashtra",
-    image: "https://images.unsplash.com/photo-1597405490024-9add713d9a8b?auto=format&fit=crop&w=900&q=80",
-    qualityGrade: "A",
-    purity: "98.1% (soil & heavy metals within limits)",
-    harvestDate: "2024-12-05",
-    dryingMethod: "Mechanical tray drying, 45°C",
-    moisture: "8.5%",
-    batchId: "ASH-MH-2024-12-05-03",
-    processingStatus:
-      "Roots cleaned and sliced; ready for further processing & extraction.",
-    description:
-      "Uniform root pieces, minimal fibre and soil. Ideal for churna and extract-based formulations.",
-  },
+    
+    // Focused processing stages with photos and audio
+    processingStages: [
+      {
+        id: 1,
+        name: "Seed Selection Certificate",
+        date: "2024-09-01",
+        location: "Organic Seed Bank, Karnataka",
+        description: "Certified organic seeds with purity verification",
+        photos: [
+          {
+            id: 1,
+            title: "Seed Certificate",
+            url: "https://signetseeds.com/assets/images/our-project/certificate1.jpg    ",
+            description: "Official certification document"
+          },
+        ],
+      },
+      {
+        id: 2,
+        name: "Cultivation Process",
+        date: "2024-09-15 to 2025-01-10",
+        location: "Farm Plot A-12, Andhra Pradesh",
+        description: "5-stage cultivation monitoring",
+        photos: [
+          {
+            id: 1,
+            title: "Stage 1:",
+            url: "https://content.jdmagicbox.com/quickquotes/images_main/tulsi-seeds-383340095-hvzre.jpg?impolicy=queryparam&im=Resize=(360,360),aspect=fit ",
+            description: "Initial germination phase"
+          },
+          {
+            id: 2,
+            title: "Stage 2:",
+            url: "https://www.99acres.com/microsite/articles/files/2021/12/How-to-maintain-a-Tulsi-plant-1.png",
+            description: "First month growth"
+          },
+          {
+            id: 3,
+            title: "Stage 3:",
+            url: "https://practicalselfreliance.com/wp-content/uploads/2018/10/How-to-Grow-Tulsi-Holy-Basil-1-of-2.jpg",
+            description: "Leaf development phase"
+          },
+          {
+            id: 4,
+            title: "Stage 4:",
+            url: "https://cdn.shopify.com/s/files/1/0489/5922/6015/files/121_480x480.jpg?v=1659352848",
+            description: "Final growth before harvest"
+          },
+          {
+            id: 5,
+            title: "Stage 5:",
+            url: "https://www.prabhupada-iskcon.de/tulasi/fotos/Tulasi-Manjari_2.jpg",
+            description: "Quality check in field"
+          }
+        ],
+        audio: {
+          title: "Farmer's Cultivation Log",
+          duration: "3:45",
+          description: "Daily cultivation observations"
+        }
+      },
+      {
+        id: 3,
+        name: "Quality Testing Results",
+        date: "2025-01-15",
+        location: "Certified Laboratory, Chennai",
+        description: "Laboratory analysis and purity tests",
+        photos: [
+          {
+            id: 1,
+            title: "Lab Test Report",
+            url: "https://examinechina.com/wp-content/uploads/2020/10/test-report-emc-certification-pass.png",
+            description: "Official test results document"
+          },
+        ],
+        // audio: {
+        //   title: "Lab Technician Notes",
+        //   duration: "1:45",
+        //   description: "Detailed test procedure explanation"
+        // }
+      },
+      {
+        id: 4,
+        name: "Manufacturing Process",
+        date: "2025-01-20",
+        location: "GMP Facility, Hyderabad",
+        description: "Production under controlled conditions",
+        photos: [
+          {
+            id: 1,
+            title: "Extraction Process",
+            url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3AoqKeERZWxkmpYoE4KtN3O3kDBHHtULs2w&s",
+            description: "Herb extraction in progress"
+          },
+        ],
+      }
+    ]
+  }
 };
 
-function App() {
-  const [activeCode, setActiveCode] = useState("");
-  const [activeHerb, setActiveHerb] = useState(null);
-  const [sourceLabel, setSourceLabel] = useState(""); // camera / manual / upload
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [selectedFileName, setSelectedFileName] = useState("");
-  const [manualBarcode, setManualBarcode] = useState("");
+function HerbJourneyTracker() {
+  const [activeHerb] = useState(HERB_JOURNEY["1"]);
+  const [expandedStage, setExpandedStage] = useState(1);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [playingAudio, setPlayingAudio] = useState(null);
 
-  // Feedback state
-  const [feedback, setFeedback] = useState({
-    name: "",
-    role: "",
-    processStage: "",
-    comments: "",
-  });
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
-
-  // Lookup herb info from "backend"
-  const loadHerbByCode = (code, source = "Unknown") => {
-    const cleanCode = (code || "").trim();
-    if (!cleanCode) return;
-
-    const herb = HERB_DB[cleanCode] || null;
-    setActiveCode(cleanCode);
-    setActiveHerb(herb);
-    setSourceLabel(source);
-
-    console.log("Barcode lookup:", { code: cleanCode, herb, source });
+  const handleStageClick = (stageId) => {
+    setExpandedStage(stageId);
+    setSelectedPhoto(null);
   };
 
-  // Barcode scanner handler
-  const handleScanUpdate = (err, result) => {
-    if (result && result.text) {
-      loadHerbByCode(result.text, "Camera scanner");
-      setManualBarcode(result.text);
-    }
+  const handlePhotoClick = (photo) => {
+    setSelectedPhoto(photo);
   };
 
-  // File upload (barcode image)
-  const handleBarcodeFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelectedFileName(file.name);
-
-    // In a real app: send file to backend for decoding barcode.
-    // For demo: treat any upload as barcode "1" (Tulasi).
-    loadHerbByCode("1", "Uploaded barcode image");
-    setManualBarcode("1");
-  };
-
-  // Manual barcode submit
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (!manualBarcode.trim()) return;
-    loadHerbByCode(manualBarcode, "Manual entry");
-  };
-
-  // Feedback submission
-  const handleFeedbackSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      ...feedback,
-      activeCode,
-      activeHerbName: activeHerb?.name || null,
-      submittedAt: new Date().toISOString(),
-    };
-    console.log("Feedback submitted:", payload);
-    
-    // Show feedback dialog
-    setShowFeedbackDialog(true);
-    setFeedbackSubmitted(true);
-    
-    // Reset form after submission
-    setFeedback({
-      name: "",
-      role: "",
-      processStage: "",
-      comments: "",
-    });
-    
-    // Hide dialog after 3 seconds
-    setTimeout(() => {
-      setShowFeedbackDialog(false);
-      setFeedbackSubmitted(false);
-    }, 3000);
-  };
-
-  // Close feedback dialog
-  const closeFeedbackDialog = () => {
-    setShowFeedbackDialog(false);
+  const handleAudioPlay = (stageId) => {
+    setPlayingAudio(stageId);
+    // In real app: play audio here
+    console.log(`Playing audio for stage ${stageId}`);
   };
 
   return (
-    <div className="app-root">
-      <Header />
-      <Hero />
-      <main className="main">
-        <section id="scanner" className="content-section">
-          <SectionHeader
-            title="Provide herb barcode"
-          />
-          <div className="grid-2">
-            <BarcodePanel
-              cameraEnabled={cameraEnabled}
-              setCameraEnabled={setCameraEnabled}
-              manualBarcode={manualBarcode}
-              setManualBarcode={setManualBarcode}
-              handleScanUpdate={handleScanUpdate}
-              handleBarcodeFileChange={handleBarcodeFileChange}
-              selectedFileName={selectedFileName}
-              handleManualSubmit={handleManualSubmit}
-            />
-            <HerbDetailsCard
-              activeCode={activeCode}
-              activeHerb={activeHerb}
-              sourceLabel={sourceLabel}
-            />
+    <div className="herb-journey-app">
+      {/* Header */}
+      <header className="app-header">
+        <div className="header-container">
+          <div className="logo-section">
+            <h1 className="logo-title">🌿 HerbTrack</h1>
+            <p className="logo-subtitle">Blockchain-Verified Herb Journey</p>
           </div>
-        </section>
-
-        <section id="feedback" className="content-section">
-          <SectionHeader
-            title="Process improvement feedback"
-          />
-          <FeedbackSection
-            feedback={feedback}
-            setFeedback={setFeedback}
-            feedbackSubmitted={feedbackSubmitted}
-            onSubmit={handleFeedbackSubmit}
-          />
-        </section>
-      </main>
-      
-      {/* Feedback Success Dialog */}
-      {showFeedbackDialog && (
-        <FeedbackDialog onClose={closeFeedbackDialog} />
-      )}
-      
-      <Footer />
-    </div>
-  );
-}
-
-/* ---------------------- SMALL COMPONENTS ---------------------- */
-
-function Header() {
-  return (
-    <header className="header">
-      <div className="header-inner">
-        <div className="logo">
-          <div className="logo-mark">🌿</div>
-          <div>
-            <div className="logo-title">AyuSethu</div>
-            <div className="logo-subtitle">
-              Ayurvedic Herb & Farmer Traceability
+          <div className="stats-section">
+            <div className="stat">
+              <FaCamera className="stat-icon" />
+              <span>12 Photos</span>
+            </div>
+            <div className="stat">
+              <FaMicrophone className="stat-icon" />
+              <span>4 Audio Logs</span>
             </div>
           </div>
         </div>
-        <nav className="nav">
-          <a href="#scanner">Barcode</a>
-          <a href="#feedback">Feedback</a>
-        </nav>
-      </div>
-    </header>
-  );
-}
+      </header>
 
-function Hero() {
-  return (
-    <section className="hero">
-      <div className="hero-overlay" />
-      <div className="hero-content">
-        <p className="hero-kicker">User Portal</p>
-        <h1 className="hero-title">
-          Scan a barcode,
-          <span className="hero-highlight">
-            see the entire Ayurvedic herb story.
-          </span>
-        </h1>
-        <p className="hero-subtitle">
-          From herb name and farmer details to region, purity and processing
-          notes. This portal simulates how your backend can expose A–Z data for
-          every batch.
-        </p>
-        <div className="hero-actions">
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SectionHeader({ step, title, subtitle }) {
-  return (
-    <div className="section-header">
-      <p className="section-kicker">{step}</p>
-      <h2>{title}</h2>
-      <p className="section-subtitle">{subtitle}</p>
-    </div>
-  );
-}
-
-/* ------------------------ BARCODE PANEL ------------------------ */
-
-function BarcodePanel({
-  cameraEnabled,
-  setCameraEnabled,
-  manualBarcode,
-  setManualBarcode,
-  handleScanUpdate,
-  handleBarcodeFileChange,
-  selectedFileName,
-  handleManualSubmit,
-}) {
-  return (
-    <div className="card card--barcode">
-      <h3>Barcode & Image Input</h3>
-      <p className="card-subtext">
-        Choose any method below to provide a barcode. In real use, backend will
-        decode and return herb details.
-      </p>
-
-      {/* Camera scanner for barcode */}
-      <div className="block">
-        <div className="block-header">
-          <span className="block-title">1. Barcode Camera Scanner</span>
-          <button
-            type="button"
-            className={`btn-pill ${
-              cameraEnabled ? "btn-pill--active" : "btn-pill--inactive"
-            }`}
-            onClick={() => setCameraEnabled((v) => !v)}
-          >
-            {cameraEnabled ? "Stop Scanner" : "Start Scanner"}
-          </button>
-        </div>
-        <div className="scanner-frame">
-          {cameraEnabled ? (
-            <BarcodeScannerComponent
-              width={"100%"}
-              height={230}
-              onUpdate={handleScanUpdate}
-            />
-          ) : (
-            <div className="scanner-placeholder">
-              <span className="scanner-icon">📷</span>
-              <p>Enable camera to scan a barcode.</p>
+      <main className="app-main">
+        {/* Herb Info Banner */}
+        <div className="herb-banner">
+          <div className="banner-content">
+            <h2>{activeHerb.name}</h2>
+            <div className="banner-details">
+              <span className="batch-badge">Batch: {activeHerb.batchId}</span>
+              <span className="verification-badge">
+                <FaCheckCircle /> Blockchain Verified
+              </span>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* File upload section */}
-      <div className="block">
-        <div className="field">
-          <label className="field-label">2. Upload Barcode Image</label>
-          <div className="upload-area">
-            <input
-              type="file"
-              accept="image/*"
-              className="upload-input"
-              id="barcode-upload"
-              onChange={handleBarcodeFileChange}
-            />
-            <label htmlFor="barcode-upload" className="upload-label">
-              <span className="upload-icon">📁</span>
-              <span>Choose barcode image file</span>
-            </label>
-            {selectedFileName && (
-              <p className="field-helper">
-                Selected: <strong>{selectedFileName}</strong> (demo maps to barcode "1")
-              </p>
-            )}
           </div>
         </div>
-      </div>
 
-      {/* Manual entry */}
-      <form className="block block--manual" onSubmit={handleManualSubmit}>
-        <div className="field">
-          <label className="field-label">3. Enter Barcode Manually</label>
-          <input
-            type="text"
-            className="field-input"
-            placeholder='Try "1" for Tulasi or "2" for Ashwagandha'
-            value={manualBarcode}
-            onChange={(e) => setManualBarcode(e.target.value)}
-          />
-        </div>
-        <button 
-          type="submit" 
-          className="btn btn-submit-action"
-        >
-          🌿 Fetch Herb Details
-        </button>
-      </form>
-    </div>
-  );
-}
+        {/* Timeline Section */}
+        <section className="timeline-section">
+          <h3 className="section-title">
+            <FaLeaf /> Processing Journey Timeline
+          </h3>
+          <p className="section-subtitle">Click on any stage to view photos and audio evidence</p>
 
-/* ------------------------ HERB DETAILS ------------------------ */
+          <div className="timeline-container">
+            {activeHerb.processingStages.map((stage) => (
+              <div 
+                key={stage.id}
+                className={`timeline-stage ${expandedStage === stage.id ? 'active' : ''}`}
+                onClick={() => handleStageClick(stage.id)}
+              >
+                <div className="stage-header">
+                  <div className="stage-icon">
+                    {stage.id === 1 && <FaCertificate />}
+                    {stage.id === 2 && <FaSeedling />}
+                    {stage.id === 3 && <FaFlask />}
+                    {stage.id === 4 && <FaIndustry />}
+                  </div>
+                  <div className="stage-info">
+                    <h4>{stage.name}</h4>
+                    <p className="stage-date">{stage.date}</p>
+                    <p className="stage-location">{stage.location}</p>
+                  </div>
+                  <div className="stage-media-indicator">
+                    <span className="photo-count">
+                      <FaCamera /> {stage.photos.length}
+                    </span>
+                    {stage.audio && (
+                      <span className="audio-indicator">
+                        <FaMicrophone />
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-function HerbDetailsCard({ activeCode, activeHerb, sourceLabel }) {
-  // Background image for herb details (same as hero background)
-  const backgroundImageUrl = "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1600&q=80";
+                {expandedStage === stage.id && (
+                  <div className="stage-details">
+                    <div className="details-header">
+                      <h5>{stage.description}</h5>
+                    </div>
+                    
+                    {/* Photos Grid */}
+                    <div className="photos-section">
+                      <h6>
+                        <FaCamera /> Photo Evidence ({stage.photos.length} photos)
+                      </h6>
+                      <div className="photos-grid">
+                        {stage.photos.map((photo) => (
+                          <div 
+                            key={photo.id}
+                            className={`photo-card ${selectedPhoto?.id === photo.id ? 'selected' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoClick(photo);
+                            }}
+                          >
+                            <div className="photo-thumbnail">
+                              <div className="thumbnail-placeholder">
+                                <FaCamera />
+                              </div>
+                            </div>
+                            <div className="photo-info">
+                              <strong>{photo.title}</strong>
+                              <p>{photo.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-  return (
-    <div className="card card--details">
-      <h3>Herb & Farmer Details</h3>
+                    {/* Audio Section */}
+                    {stage.audio && (
+                      <div className="audio-section">
+                        <h6>
+                          <FaMicrophone /> Audio Log
+                        </h6>
+                        <div className="audio-card">
+                          <div className="audio-info">
+                            <h4>{stage.audio.title}</h4>
+                            <p>{stage.audio.description}</p>
+                            <span className="audio-duration">⏱️ {stage.audio.duration}</span>
+                          </div>
+                          <button 
+                            className={`audio-play-btn ${playingAudio === stage.id ? 'playing' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAudioPlay(stage.id);
+                            }}
+                          >
+                            <FaMicrophone />
+                            {playingAudio === stage.id ? 'Listening...' : 'Play Audio'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-      {!activeCode && (
-        <div className="details-empty">
-          <div className="empty-icon">🌿</div>
-          <p>No barcode scanned yet.</p>
-          <p className="details-hint">
-            Use any method on the left. For demo, enter barcode <strong>1</strong> to
-            see Tulasi, or <strong>2</strong> for Ashwagandha.
-          </p>
-        </div>
-      )}
-
-      {activeCode && !activeHerb && (
-        <div className="details-empty">
-          <div className="empty-icon">❌</div>
-          <p>
-            No herb found for barcode <strong>{activeCode}</strong>.
-          </p>
-          <p className="details-hint">
-            Currently only demo codes <strong>1</strong> and <strong>2</strong> have
-            data.
-          </p>
-        </div>
-      )}
-
-      {activeHerb && (
-        <div className="details-content">
-          <div className="details-badge-row">
-            <span className="details-badge">Barcode: {activeHerb.code}</span>
-            {sourceLabel && (
-              <span className="details-source">via {sourceLabel}</span>
-            )}
+                    {/* Selected Photo Display */}
+                    {selectedPhoto && (
+                      <div className="selected-photo-display">
+                        <div className="selected-photo-header">
+                          <h5>📸 {selectedPhoto.title}</h5>
+                          <button 
+                            className="close-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPhoto(null);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="photo-preview">
+                          <div className="image-container">
+                            <img
+                              src={selectedPhoto.url.trim()}
+                              alt={selectedPhoto.title}
+                              className="selected-photo-image"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://via.placeholder.com/400x400?text=Image+Not+Found";
+                              }}
+                            />
+                          </div>
+                          <div className="photo-description">
+                            <p>{selectedPhoto.description}</p>
+                            <div className="photo-meta">
+                              <span>📅 {stage.date}</span>
+                              <span>📍 {stage.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
+        </section>
 
-          {/* Herb image with background styling */}
-          <div className="herb-image-container">
-            <div 
-              className="herb-image-bg"
-              style={{ backgroundImage: `url(${backgroundImageUrl})` }}
-            >
-              <div className="herb-image-overlay">
-                <div className="herb-image-content">
-                  <h4>{activeHerb.name}</h4>
-                  <p className="herb-image-sub">
-                    Farmer: <strong>{activeHerb.farmerName}</strong>
-                  </p>
-                  <p className="herb-image-sub">
-                    Region: <strong>{activeHerb.region}</strong>
-                  </p>
+        {/* Media Summary */}
+        <section className="media-summary">
+          <h3 className="section-title">
+            <FaCamera /> Media Evidence Summary
+          </h3>
+          <div className="summary-grid">
+            {activeHerb.processingStages.map((stage) => (
+              <div key={stage.id} className="summary-card">
+                <div className="summary-header">
+                  <div className="summary-icon">
+                    {stage.id === 1 && <FaCertificate />}
+                    {stage.id === 2 && <FaSeedling />}
+                    {stage.id === 3 && <FaFlask />}
+                    {stage.id === 4 && <FaIndustry />}
+                  </div>
+                  <h4>{stage.name}</h4>
+                </div>
+                <div className="summary-body">
+                  <div className="media-count">
+                    <span><FaCamera /> {stage.photos.length} Photos</span>
+                    {stage.audio && <span><FaMicrophone /> 1 Audio</span>}
+                  </div>
+                  <button 
+                    className="view-stage-btn"
+                    onClick={() => handleStageClick(stage.id)}
+                  >
+                    View Details →
+                  </button>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
+        </section>
+      </main>
 
-          <div className="details-description">
-            <p>{activeHerb.description}</p>
+      {/* Footer */}
+      <footer className="app-footer">
+        <div className="footer-content">
+          <div className="verification-note">
+            <FaCheckCircle className="verify-icon" />
+            <span>All evidence timestamped and stored on blockchain</span>
           </div>
-
-          <div className="details-grid">
-            <DetailItem label="Quality grade" value={activeHerb.qualityGrade} />
-            <DetailItem label="Purity" value={activeHerb.purity} />
-            <DetailItem label="Harvest date" value={activeHerb.harvestDate} />
-            <DetailItem label="Drying method" value={activeHerb.dryingMethod} />
-            <DetailItem label="Moisture" value={activeHerb.moisture} />
-            <DetailItem label="Batch ID" value={activeHerb.batchId} />
-          </div>
-
-          <div className="details-footer">
-            <span className="details-status">
-              Processing status: {activeHerb.processingStatus}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DetailItem({ label, value }) {
-  return (
-    <div className="detail-item">
-      <div className="detail-label">{label}</div>
-      <div className="detail-value">{value}</div>
-    </div>
-  );
-}
-
-/* ------------------------ FEEDBACK SECTION ------------------------ */
-
-function FeedbackSection({
-  feedback,
-  setFeedback,
-  feedbackSubmitted,
-  onSubmit,
-}) {
-  const update = (key, value) =>
-    setFeedback((prev) => ({ ...prev, [key]: value }));
-
-  return (
-    <div className="card card--feedback">
-      <form className="form" onSubmit={onSubmit}>
-        <div className="form-grid">
-          <div className="field">
-            <label className="field-label">Your name</label>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="Enter your full name"
-              value={feedback.name}
-              onChange={(e) => update("name", e.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label className="field-label">Role / department</label>
-            <input
-              className="field-input"
-              type="text"
-              placeholder="E.g. Raw material QC, Production, Warehouse"
-              value={feedback.role}
-              onChange={(e) => update("role", e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="field">
-          <label className="field-label">Process stage</label>
-          <select
-            className="field-input select-field"
-            value={feedback.processStage}
-            onChange={(e) => update("processStage", e.target.value)}
-          >
-            <option value="">Select stage</option>
-            <option value="sourcing">Sourcing & procurement</option>
-            <option value="grading">Sorting & grading</option>
-            <option value="drying">Drying & storage</option>
-            <option value="transport">Transport & logistics</option>
-            <option value="documentation">Documentation & GMP</option>
-            <option value="other">Other / general</option>
-          </select>
-        </div>
-
-        <div className="field">
-          <label className="field-label">Improvement suggestions</label>
-          <textarea
-            className="field-textarea"
-            placeholder="Describe issues, risks, or improvements you see in the current process. Be as practical and specific as possible."
-            value={feedback.comments}
-            onChange={(e) => update("comments", e.target.value)}
-            rows={4}
-          />
-        </div>
-
-        <button type="submit" className="btn btn-feedback-submit">
-          📤 Submit Feedback
-        </button>
-      </form>
-    </div>
-  );
-}
-
-/* ------------------------ FEEDBACK DIALOG ------------------------ */
-
-function FeedbackDialog({ onClose }) {
-  return (
-    <div className="dialog-overlay" onClick={onClose}>
-      <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-header">
-          <div className="dialog-icon">✓</div>
-          <h3>Feedback Submitted Successfully!</h3>
-        </div>
-        <div className="dialog-body">
-          <p>Your feedback has been recorded and will be reviewed by our team.</p>
-          <p className="dialog-note">
-            In a real implementation, this would be saved to your backend or blockchain.
+          <p className="timestamp">
+            Last updated: {new Date().toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
           </p>
         </div>
-        <div className="dialog-footer">
-          <button className="btn btn-primary" onClick={onClose}>
-            Close
-          </button>
-        </div>
-      </div>
+      </footer>
     </div>
   );
 }
 
-/* ----------------------------- FOOTER ----------------------------- */
-
-function Footer() {
-  return (
-    <footer className="footer">
-      <span>AyuSethu User Portal</span>
-      <span className="footer-dot">•</span>
-      <span>Built in React for Ayurvedic herb traceability 🌿</span>
-    </footer>
-  );
-}
-
-export default App;
+export default HerbJourneyTracker;

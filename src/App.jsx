@@ -8,6 +8,7 @@ import Collector from"./pages/Collector.jsx";
 import Admin from "./pages/Admin.jsx"
 import User from "./pages/User.jsx";
 import Manufacturer from "./pages/Manufacturer.jsx";
+// import Farmer from "./pages/Farmer.jsx";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/Collector" element={<Collector/>}/>
         <Route path="/Admin" element={<Admin/>}/>
         <Route path="/User" element={<User/>}/>
+        {/* <Route path="/Farmer" element={<Farmer/>}/> */}
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
