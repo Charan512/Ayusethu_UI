@@ -10,9 +10,7 @@ const Admin = () => {
     analytics: 'consumer-analytics'
   });
   const [modalOpen, setModalOpen] = useState(null);
-  
-  // Add this line with your other state declarations (around line 9)
-const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Chart references
   const batchChartRef = useRef(null);
@@ -377,13 +375,37 @@ const [showNotifications, setShowNotifications] = useState(false);
         </div>
         
         <div className="notifications-container">
-          <h3 className="section-title"><i className="fas fa-bell"></i> Recent Notifications</h3>
-          {notifications.map(notification => (
-            <div className={`notification-item ${notification.type}`} key={notification.id}>
-              <div><strong>{notification.title}</strong> {notification.details}</div>
-              <div className="notification-time">{notification.time}</div>
+          <h3 className="section-title"><i className="fas fa-bell"></i> Recent Activity</h3>
+          <div className="activity-list">
+            <div className="activity-item">
+              <div className="activity-icon success"><i className="fas fa-check-circle"></i></div>
+              <div>
+                <strong>Batch HB-2023-08-124</strong> moved to Stage 3
+                <div className="activity-time">10 minutes ago</div>
+              </div>
             </div>
-          ))}
+            <div className="activity-item">
+              <div className="activity-icon warning"><i className="fas fa-exclamation-triangle"></i></div>
+              <div>
+                <strong>Collector C-103</strong> delayed visit by 2 hours
+                <div className="activity-time">45 minutes ago</div>
+              </div>
+            </div>
+            <div className="activity-item">
+              <div className="activity-icon info"><i className="fas fa-info-circle"></i></div>
+              <div>
+                <strong>New manufacturer</strong> HerbCare Solutions registered
+                <div className="activity-time">2 hours ago</div>
+              </div>
+            </div>
+            <div className="activity-item">
+              <div className="activity-icon success"><i className="fas fa-link"></i></div>
+              <div>
+                <strong>Blockchain sync</strong> completed for 5 batches
+                <div className="activity-time">3 hours ago</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1334,65 +1356,6 @@ const [showNotifications, setShowNotifications] = useState(false);
                 <div className="card-change positive">Excellent</div>
               </div>
             </div>
-
-            <div className="user-info">
-  {/* Notifications Bell with Badge */}
-  <div className="notification-icon-container">
-    <i 
-      className="fas fa-bell" 
-      style={{ fontSize: '1.2rem', color: '#2e7d32', cursor: 'pointer', position: 'relative' }}
-      onClick={() => setShowNotifications(!showNotifications)}
-    >
-      {/* Notification Badge */}
-      {notifications.length > 0 && (
-        <span className="notification-badge">{notifications.length}</span>
-      )}
-    </i>
-    
-    {/* Notifications Dropdown */}
-    {showNotifications && (
-      <div className="notifications-dropdown">
-        <div className="notifications-header">
-          <h4>Notifications ({notifications.length})</h4>
-          <button 
-            className="btn btn-sm btn-secondary"
-            onClick={() => setShowNotifications(false)}
-          >
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
-        <div className="notifications-list">
-          {notifications.map(notification => (
-            <div key={notification.id} className={`notification-dropdown-item ${notification.type}`}>
-              <div className="notification-dropdown-content">
-                <strong>{notification.title}</strong>
-                <p>{notification.details}</p>
-                <small>{notification.time}</small>
-              </div>
-              <button className="notification-mark-read">
-                <i className="fas fa-check"></i>
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="notifications-footer">
-          <button className="btn btn-sm btn-block btn-secondary">
-            Mark all as read
-          </button>
-          <button className="btn btn-sm btn-block btn-primary">
-            View all notifications
-          </button>
-        </div>
-      </div>
-    )}
-  </div>
-  
-  <div className="user-avatar">AD</div>
-  <div>
-    <div style={{ fontWeight: '600' }}>Admin User</div>
-    <div style={{ fontSize: '0.9rem', color: '#666' }}>Super Administrator</div>
-  </div>
-</div>
             
             <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginTop: '30px' }}>
               <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}>Region-wise QR Scans</h3>
@@ -1680,7 +1643,55 @@ const [showNotifications, setShowNotifications] = useState(false);
             </div>
           </div>
           <div className="user-info">
-            <i className="fas fa-bell" style={{ fontSize: '1.2rem', color: '#2e7d32', cursor: 'pointer' }}></i>
+            <div className="notification-icon-container">
+              <i 
+                className="fas fa-bell" 
+                style={{ fontSize: '1.2rem', color: '#2e7d32', cursor: 'pointer', position: 'relative' }}
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                {/* Notification Badge */}
+                {notifications.length > 0 && (
+                  <span className="notification-badge">{notifications.length}</span>
+                )}
+              </i>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="notifications-dropdown">
+                  <div className="notifications-header">
+                    <h4>Notifications ({notifications.length})</h4>
+                    <button 
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div className="notifications-list">
+                    {notifications.map(notification => (
+                      <div key={notification.id} className={`notification-dropdown-item ${notification.type}`}>
+                        <div className="notification-dropdown-content">
+                          <strong>{notification.title}</strong>
+                          <p>{notification.details}</p>
+                          <small>{notification.time}</small>
+                        </div>
+                        <button className="notification-mark-read">
+                          <i className="fas fa-check"></i>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="notifications-footer">
+                    <button className="btn btn-sm btn-block btn-secondary">
+                      Mark all as read
+                    </button>
+                    <button className="btn btn-sm btn-block btn-primary">
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="user-avatar">AD</div>
             <div>
               <div style={{ fontWeight: '600' }}>Admin User</div>
