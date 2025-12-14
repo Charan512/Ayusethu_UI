@@ -50,10 +50,6 @@ function Header({
 
   return (
     <div className="header-landing">
-      {/* Header Background Image */}
-      <div className="header-image"></div>
-      <div className="header-overlay"></div>
-
       {/* Transparent Navbar */}
       <div className="navbar">
         <nav>
@@ -193,10 +189,6 @@ function Header({
       </div>
 
       {/* Header Content */}
-      <div className="header-content">
-        <h1 className="header-title">Laboratory Testing Excellence</h1>
-        <p className="header-subtitle">Blockchain-sealed — Lab-verified — Quality Assured</p>
-      </div>
     </div>
   );
 }
@@ -692,21 +684,21 @@ function TestForm({ batch, testResult, onSave, onSubmit }) {
 
       <div className="action-buttons">
         <button
-          className="action-btn btn-save"
+          className="btn-save"
           onClick={() => onSave(formData)}
         >
           <Save className="w-6 h-6" />
           Save Draft
         </button>
         <button
-          className="action-btn btn-approve"
+          className=" btn-approve"
           onClick={() => setShowConfirmModal(true)}
         >
           <CheckCircle className="w-6 h-6" />
           Approve & Seal on Chain
         </button>
         <button
-          className="action-btn btn-reject"
+          className="btn-reject"
           onClick={() => {
             const reason = prompt("Enter rejection reason:");
             if (reason) onSubmit(false, reason, formData);

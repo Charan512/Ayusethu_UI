@@ -6,27 +6,22 @@ const STAGE_DATA = [
   {
     id: 1,
     title: "Stage 1",
-    description: "Plantation Documentation"
   },
   {
     id: 2,
     title: "Stage 2",
-    description: "Growth Monitoring"
   },
   {
     id: 3,
     title: "Stage 3",
-    description: "Mid-Term Assessment"
   },
   {
     id: 4,
     title: "Stage 4",
-    description: "Pre-Harvest Check"
   },
   {
     id: 5,
     title: "Stage 5",
-    description: "Final Verification"
   }
 ];
 
@@ -729,313 +724,140 @@ function App() {
           </div>
         );
 
-      case 2:
-        return (
-          <div className={styles["vhc-stage-content"]}>
-            <h3 className={styles["vhc-stage-title"]}>Stage 2: Growth Monitoring</h3>
-            <p className={styles["vhc-stage-subtitle"]}>Monitor plant growth and farmer updates</p>
+case 2:
+  return (
+    <div className={styles["vhc-stage-content"]}>
+      <h3 className={styles["vhc-stage-title"]}>
+        Stage 2: Growth Monitoring
+      </h3>
 
-            <div className={styles["vhc-form-grid"]}>
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Growth Photos from Farmer</label>
-                <div className={styles["vhc-photo-upload"]}>
-                  <label className={styles["vhc-upload-area"]}>
-                    <Camera size={24} />
-                    <span>Click to upload farmer's growth photos</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleMultiplePhotoUpload(e, 2)}
-                      hidden
-                    />
-                  </label>
+      {/* STATUS BOX */}
+      <div className={styles["vhc-waiting-box"]}>
+        {stage2Form.growthPhotos.length === 0 ? (
+          <>
+            <Camera size={28} />
+            <p>Waiting for farmer to upload growth data</p>
+            <span>No submission received yet</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle size={28} />
+            <p>Farmer has submitted growth data</p>
+            <span>Data is locked and cannot be viewed</span>
+          </>
+        )}
+      </div>
 
-                  {stage2Form.growthPhotos.length > 0 && (
-                    <div className={styles["vhc-photo-grid"]}>
-                      {stage2Form.growthPhotos.map((photo, index) => (
-                        <div key={index} className={styles["vhc-photo-preview-small"]}>
-                          <img src={URL.createObjectURL(photo)} alt={`Growth ${index + 1}`} />
-                          <button
-                            className={styles["vhc-remove-photo"]}
-                            onClick={() => removePhoto(2, index)}
-                          >
-                            <X size={12} />
-                          </button>
-                          <span className={styles["vhc-photo-count"]}>{index + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className={styles["vhc-upload-note"]}>
-                  Upload photos received from farmer showing plant growth progress
-                </p>
-              </div>
+      {/* ACTION */}
+      <div className={styles["vhc-create-batch-section"]}>
+        <button
+          className={styles["vhc-create-batch-btn"]}
+          disabled={stage2Form.growthPhotos.length === 0}
+          onClick={() => markStageDone(2)}
+        >
+          <CheckCircle size={20} />
+          Approve Growth Monitoring
+        </button>
 
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Growth Stage</label>
-                <select
-                  className={styles["vhc-select"]}
-                  value={stage2Form.growthStage}
-                  onChange={(e) => updateStage2Form("growthStage", e.target.value)}
-                >
-                  <option value="Early Growth">Early Growth</option>
-                  <option value="Vegetative">Vegetative Stage</option>
-                  <option value="Flowering">Flowering Stage</option>
-                  <option value="Fruiting">Fruiting Stage</option>
-                  <option value="Maturation">Maturation</option>
-                </select>
-              </div>
+        {stage2Form.growthPhotos.length === 0 && (
+          <p className={styles["vhc-verification-note"]}>
+            Approval enabled only after farmer submission
+          </p>
+        )}
+      </div>
+    </div>
+  );
 
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Farmer Updates & Concerns</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage2Form.farmerUpdates}
-                  onChange={(e) => updateStage2Form("farmerUpdates", e.target.value)}
-                  placeholder="Record any updates or concerns shared by the farmer..."
-                  rows="4"
-                />
-              </div>
-
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Your Observations</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage2Form.observations}
-                  onChange={(e) => updateStage2Form("observations", e.target.value)}
-                  placeholder="Add your observations about plant health, growth rate, etc."
-                  rows="4"
-                />
-              </div>
-            </div>
-
-            <div className={styles["vhc-create-batch-section"]}>
-              <button
-                className={styles["vhc-create-batch-btn"]}
-                onClick={() => markStageDone(2)}
-                disabled={stage2Form.growthPhotos.length === 0}
-              >
-                <CheckCircle size={20} /> Complete Growth Monitoring
-              </button>
-              <p className={styles["vhc-verification-note"]}>
-                Note: At least one growth photo from farmer is required
-              </p>
-            </div>
-          </div>
-        );
 
       case 3:
-        return (
-          <div className={styles["vhc-stage-content"]}>
-            <h3 className={styles["vhc-stage-title"]}>Stage 3: Mid-Term Assessment</h3>
-            <p className={styles["vhc-stage-subtitle"]}>Assess crop health and identify issues</p>
+  return (
+    <div className={styles["vhc-stage-content"]}>
+      <h3 className={styles["vhc-stage-title"]}>
+        Stage 3: Growth Monitoring
+      </h3>
 
-            <div className={styles["vhc-form-grid"]}>
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Assessment Photos from Farmer</label>
-                <div className={styles["vhc-photo-upload"]}>
-                  <label className={styles["vhc-upload-area"]}>
-                    <Camera size={24} />
-                    <span>Click to upload assessment photos</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleMultiplePhotoUpload(e, 3)}
-                      hidden
-                    />
-                  </label>
+      {/* STATUS BOX */}
+      <div className={styles["vhc-waiting-box"]}>
+        {stage2Form.growthPhotos.length === 0 ? (
+          <>
+            <Camera size={28} />
+            <p>Waiting for farmer to upload growth data</p>
+            <span>No submission received yet</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle size={28} />
+            <p>Farmer has submitted growth data</p>
+            <span>Data is locked and cannot be viewed</span>
+          </>
+        )}
+      </div>
 
-                  {stage3Form.assessmentPhotos.length > 0 && (
-                    <div className={styles["vhc-photo-grid"]}>
-                      {stage3Form.assessmentPhotos.map((photo, index) => (
-                        <div key={index} className={styles["vhc-photo-preview-small"]}>
-                          <img src={URL.createObjectURL(photo)} alt={`Assessment ${index + 1}`} />
-                          <button
-                            className={styles["vhc-remove-photo"]}
-                            onClick={() => removePhoto(3, index)}
-                          >
-                            <X size={12} />
-                          </button>
-                          <span className={styles["vhc-photo-count"]}>{index + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className={styles["vhc-upload-note"]}>
-                  Upload photos showing pest issues, disease symptoms, or other concerns
-                </p>
-              </div>
+      {/* ACTION */}
+      <div className={styles["vhc-create-batch-section"]}>
+        <button
+          className={styles["vhc-create-batch-btn"]}
+          disabled={stage2Form.growthPhotos.length === 0}
+          onClick={() => markStageDone(2)}
+        >
+          <CheckCircle size={20} />
+          Approve Growth Monitoring
+        </button>
 
-              <div className={styles["vhc-field"]}>
-                <label className={styles["vhc-label"]}>Overall Health Status</label>
-                <select
-                  className={styles["vhc-select"]}
-                  value={stage3Form.healthStatus}
-                  onChange={(e) => updateStage3Form("healthStatus", e.target.value)}
-                >
-                  <option value="Excellent">Excellent</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                  <option value="Critical">Critical</option>
-                </select>
-              </div>
+        {stage2Form.growthPhotos.length === 0 && (
+          <p className={styles["vhc-verification-note"]}>
+            Approval enabled only after farmer submission
+          </p>
+        )}
+      </div>
+    </div>
+  );
 
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Pest/Disease Issues</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage3Form.pestIssues}
-                  onChange={(e) => updateStage3Form("pestIssues", e.target.value)}
-                  placeholder="Describe any pest or disease issues observed..."
-                  rows="3"
-                />
-              </div>
-
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Irrigation/Water Issues</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage3Form.irrigationIssues}
-                  onChange={(e) => updateStage3Form("irrigationIssues", e.target.value)}
-                  placeholder="Note any irrigation or water-related issues..."
-                  rows="3"
-                />
-              </div>
-
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Recommendations</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage3Form.recommendations}
-                  onChange={(e) => updateStage3Form("recommendations", e.target.value)}
-                  placeholder="Provide recommendations to the farmer..."
-                  rows="4"
-                />
-              </div>
-            </div>
-
-            <div className={styles["vhc-create-batch-section"]}>
-              <button
-                className={styles["vhc-create-batch-btn"]}
-                onClick={() => markStageDone(3)}
-              >
-                <CheckCircle size={20} /> Complete Assessment
-              </button>
-            </div>
-          </div>
-        );
 
       case 4:
-        return (
-          <div className={styles["vhc-stage-content"]}>
-            <h3 className={styles["vhc-stage-title"]}>Stage 4: Pre-Harvest Check</h3>
-            <p className={styles["vhc-stage-subtitle"]}>Final check before harvest</p>
+  return (
+    <div className={styles["vhc-stage-content"]}>
+      <h3 className={styles["vhc-stage-title"]}>
+        Stage 3: Growth Monitoring
+      </h3>
 
-            <div className={styles["vhc-form-grid"]}>
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Pre-Harvest Photos from Farmer</label>
-                <div className={styles["vhc-photo-upload"]}>
-                  <label className={styles["vhc-upload-area"]}>
-                    <Camera size={24} />
-                    <span>Click to upload pre-harvest photos</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleMultiplePhotoUpload(e, 4)}
-                      hidden
-                    />
-                  </label>
+      {/* STATUS BOX */}
+      <div className={styles["vhc-waiting-box"]}>
+        {stage2Form.growthPhotos.length === 0 ? (
+          <>
+            <Camera size={28} />
+            <p>Waiting for farmer to upload growth data</p>
+            <span>No submission received yet</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle size={28} />
+            <p>Farmer has submitted growth data</p>
+            <span>Data is locked and cannot be viewed</span>
+          </>
+        )}
+      </div>
 
-                  {stage4Form.preHarvestPhotos.length > 0 && (
-                    <div className={styles["vhc-photo-grid"]}>
-                      {stage4Form.preHarvestPhotos.map((photo, index) => (
-                        <div key={index} className={styles["vhc-photo-preview-small"]}>
-                          <img src={URL.createObjectURL(photo)} alt={`Pre-harvest ${index + 1}`} />
-                          <button
-                            className={styles["vhc-remove-photo"]}
-                            onClick={() => removePhoto(4, index)}
-                          >
-                            <X size={12} />
-                          </button>
-                          <span className={styles["vhc-photo-count"]}>{index + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className={styles["vhc-upload-note"]}>
-                  Upload final photos showing crop readiness for harvest
-                </p>
-              </div>
+      {/* ACTION */}
+      <div className={styles["vhc-create-batch-section"]}>
+        <button
+          className={styles["vhc-create-batch-btn"]}
+          disabled={stage2Form.growthPhotos.length === 0}
+          onClick={() => markStageDone(2)}
+        >
+          <CheckCircle size={20} />
+          Approve Growth Monitoring
+        </button>
 
-              <div className={styles["vhc-field"]}>
-                <label className={styles["vhc-label"]}>Harvest Readiness</label>
-                <div className={styles["vhc-readiness-slider"]}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={parseInt(stage4Form.harvestReadiness)}
-                    onChange={(e) => updateStage4Form("harvestReadiness", e.target.value)}
-                    className={styles["vhc-slider"]}
-                  />
-                  <div className={styles["vhc-slider-value"]}>
-                    {stage4Form.harvestReadiness}%
-                  </div>
-                </div>
-              </div>
+        {stage2Form.growthPhotos.length === 0 && (
+          <p className={styles["vhc-verification-note"]}>
+            Approval enabled only after farmer submission
+          </p>
+        )}
+      </div>
+    </div>
+  );
 
-              <div className={styles["vhc-field"]}>
-                <label className={styles["vhc-label"]}>Expected Harvest Date</label>
-                <input
-                  className={styles["vhc-input"]}
-                  type="date"
-                  value={stage4Form.expectedHarvestDate}
-                  onChange={(e) => updateStage4Form("expectedHarvestDate", e.target.value)}
-                />
-              </div>
-
-              <div className={styles["vhc-field"]}>
-                <label className={styles["vhc-label"]}>Quality Check</label>
-                <select
-                  className={styles["vhc-select"]}
-                  value={stage4Form.qualityCheck}
-                  onChange={(e) => updateStage4Form("qualityCheck", e.target.value)}
-                >
-                  <option value="Pass">Pass - Ready for harvest</option>
-                  <option value="Hold">Hold - Needs more time</option>
-                  <option value="Reject">Reject - Quality issues</option>
-                </select>
-              </div>
-
-              <div className={`${styles["vhc-field"]} ${styles["vhc-field-full"]}`}>
-                <label className={styles["vhc-label"]}>Issues or Concerns</label>
-                <textarea
-                  className={styles["vhc-textarea"]}
-                  value={stage4Form.issues}
-                  onChange={(e) => updateStage4Form("issues", e.target.value)}
-                  placeholder="Note any final issues or concerns before harvest..."
-                  rows="3"
-                />
-              </div>
-            </div>
-
-            <div className={styles["vhc-create-batch-section"]}>
-              <button
-                className={styles["vhc-create-batch-btn"]}
-                onClick={() => markStageDone(4)}
-              >
-                <CheckCircle size={20} /> Complete Pre-Harvest Check
-              </button>
-            </div>
-          </div>
-        );
 
       case 5:
         return (

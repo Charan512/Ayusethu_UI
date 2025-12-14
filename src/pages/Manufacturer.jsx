@@ -883,38 +883,65 @@ const Manufacturer = () => {
       </header>
 
       {/* Navigation */}
-      <nav className="phase-navigation">
-        <div className="nav-container">
-          <button 
-            className={`nav-item ${activePhase === 'receive' ? 'active' : ''}`}
-            onClick={() => setActivePhase('receive')}
-          >
-            <i className="fas fa-inbox"></i>
-            <span>Receive Batches</span>
-          </button>
-          <button 
-            className={`nav-item ${activePhase === 'quote' ? 'active' : ''}`}
-            onClick={() => setActivePhase('quote')}
-          >
-            <i className="fas fa-file-invoice-dollar"></i>
-            <span>Submit Quotes</span>
-          </button>
-          <button 
-            className={`nav-item ${activePhase === 'manufacturing' ? 'active' : ''}`}
-            onClick={() => setActivePhase('manufacturing')}
-          >
-            <i className="fas fa-industry"></i>
-            <span>Manufacturing</span>
-          </button>
-          <button 
-            className={`nav-item ${activePhase === 'packaging' ? 'active' : ''}`}
-            onClick={() => setActivePhase('packaging')}
-          >
-            <i className="fas fa-box"></i>
-            <span>Packaging</span>
-          </button>
-        </div>
-      </nav>
+<nav className="vhc-navbar">
+  {/* LEFT SIDE */}
+  <div className="vhc-navbar-left">
+    <img
+      src="https://res.cloudinary.com/domogztsv/image/upload/v1765220874/WhatsApp_Image_2025-12-09_at_12.36.40_AM_bp8jxt.jpg"
+      alt="AyuSethu Logo"
+      className="vhc-nav-LogoImage"
+    />
+    <div className="vhc-nav-logo">AyuSethu</div>
+  </div>
+
+  {/* RIGHT SIDE – MANUFACTURER PHASE NAVIGATION */}
+  <div className="vhc-navbar-right">
+    <div className="vhc-phase-nav">
+
+      <button
+        className={`vhc-phase-item ${
+          activePhase === "receive" ? "active" : ""
+        }`}
+        onClick={() => setActivePhase("receive")}
+      >
+        <i className="fas fa-inbox"></i>
+        <span>Receive Batches</span>
+      </button>
+
+      <button
+        className={`vhc-phase-item ${
+          activePhase === "quote" ? "active" : ""
+        }`}
+        onClick={() => setActivePhase("quote")}
+      >
+        <i className="fas fa-file-invoice-dollar"></i>
+        <span>Submit Quotes</span>
+      </button>
+
+      <button
+        className={`vhc-phase-item ${
+          activePhase === "manufacturing" ? "active" : ""
+        }`}
+        onClick={() => setActivePhase("manufacturing")}
+      >
+        <i className="fas fa-industry"></i>
+        <span>Manufacturing</span>
+      </button>
+
+      <button
+        className={`vhc-phase-item ${
+          activePhase === "packaging" ? "active" : ""
+        }`}
+        onClick={() => setActivePhase("packaging")}
+      >
+        <i className="fas fa-box"></i>
+        <span>Packaging</span>
+      </button>
+
+    </div>
+  </div>
+</nav>
+
 
       {/* Main Content */}
       <main className="portal-main">
