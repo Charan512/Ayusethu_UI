@@ -132,22 +132,22 @@ body {
    =============================== */
 
 .vhc-phase-nav {
+
   display: flex;
   gap: 20rem;
   background-color: #8dc88d9d;
-  height:50px;
+  height:58px;
 }
 
 .vhc-phase-item {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-
+  margin-top:2px;
   padding: 8px 14px;
   border-radius: 999px;
   border: none;
   background: transparent;
-
   font-size: 14px;
   font-weight: 600;
   color: #1f2937;
