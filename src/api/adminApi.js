@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const adminApi = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: "https://ayusethu-api.onrender.com",
 });
 
 // Attach JWT

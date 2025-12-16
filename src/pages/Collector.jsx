@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "../styles/Collector.module.css";
 import { Bell, X, CheckCircle, AlertCircle, MapPin, Camera } from 'lucide-react';
-const API_BASE = import.meta.env.API_BASE || "http://localhost:8000";
+const API_BASE = import.meta.env.API_BASE;
 
 // ✅ FIX #6: Improved token handling with validation
 const getAuthHeaders = () => {
