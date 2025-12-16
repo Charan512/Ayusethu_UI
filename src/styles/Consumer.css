@@ -1,0 +1,520 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-green: #2E7D32;
+  --secondary-green: #4CAF50;
+  --light-green: #E8F5E9;
+  --dark-green: #1B5E20;
+  --accent-gold: #FFD700;
+  --text-dark: #333333;
+  --text-light: #666666;
+  --bg-white: #FFFFFF;
+  --bg-light: #F9F9F9;
+  --border-color: #E0E0E0;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition: all 0.3s ease;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+  min-height: 100vh;
+  color: var(--text-dark);
+}
+
+/* APP WRAPPER */
+.herb-journey-app {
+  width: 100%;
+  max-width: 1200px;
+  padding: 20px;
+  margin: 0 auto;
+}
+
+/* Header Styles */
+.app-header {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  margin-bottom: 30px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.logo-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--primary-green);
+  letter-spacing: -0.5px;
+}
+
+.logo-subtitle {
+  font-size: 1rem;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.stats-section {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--light-green);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  color: var(--dark-green);
+  transition: var(--transition);
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+  font-size: 1.2rem;
+}
+
+/* Banner */
+.herb-banner {
+  /* Base style, overridden by status classes below */
+  background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+  border-radius: var(--radius-lg);
+  padding: 32px 40px;
+  margin-bottom: 40px;
+  color: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.banner-content h2 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.banner-details {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.batch-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.verification-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--accent-gold);
+}
+
+/* Timeline Section */
+.timeline-section {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  margin-bottom: 40px;
+  box-shadow: var(--shadow-md);
+}
+
+.section-title {
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  color: var(--primary-green);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-subtitle {
+  color: var(--text-light);
+  margin-bottom: 32px;
+  font-size: 1.1rem;
+}
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timeline-stage {
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 2px solid transparent;
+}
+
+.timeline-stage:hover {
+  border-color: var(--secondary-green);
+  transform: translateX(4px);
+}
+
+.timeline-stage.active {
+  border-color: var(--primary-green);
+  background: var(--light-green);
+  box-shadow: var(--shadow-sm);
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stage-icon {
+  width: clamp(40px, 6vw, 60px);
+  height: clamp(40px, 6vw, 60px);
+  background: var(--primary-green);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  flex-shrink: 0;
+}
+
+.stage-info h4 {
+  font-size: 1.3rem;
+  margin-bottom: 6px;
+  color: var(--text-dark);
+}
+
+.stage-date {
+  color: var(--primary-green);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.stage-location {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+.stage-media-indicator {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.photo-count, .audio-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  color: var(--dark-green);
+}
+
+/* Stage Details */
+.stage-details {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid var(--border-color);
+}
+
+/* Photos */
+.photos-section {
+  margin-bottom: 32px;
+}
+
+.photos-section h6 {
+  font-size: 1.2rem;
+  color: var(--primary-green);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.photo-card {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 2px solid transparent;
+}
+
+.photo-card:hover {
+  border-color: var(--secondary-green);
+  transform: translateY(-2px);
+}
+
+.photo-card.selected {
+  border-color: var(--primary-green);
+  background: var(--light-green);
+}
+
+.thumbnail-placeholder {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+}
+
+/* Selected Photo Display */
+.selected-photo-display {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-top: 32px;
+  box-shadow: var(--shadow-lg);
+  border: 2px solid var(--primary-green);
+}
+
+.selected-photo-image {
+  width: 100%;
+  height: auto;
+  max-height: 350px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .selected-photo-image {
+    max-height: 250px;
+  }
+}
+
+.photo-preview {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Media Summary */
+.media-summary {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  margin-bottom: 40px;
+  box-shadow: var(--shadow-md);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.summary-card {
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: var(--transition);
+  border: 2px solid transparent;
+}
+
+.summary-card:hover {
+  border-color: var(--secondary-green);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summary-icon {
+  width: clamp(40px, 6vw, 50px);
+  height: clamp(40px, 6vw, 50px);
+  background: var(--primary-green);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: clamp(1rem, 3vw, 1.5rem);
+}
+
+/* Footer */
+.app-footer {
+  background: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.verification-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary-green);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.verify-icon {
+  font-size: 1.3rem;
+  color: var(--accent-gold);
+}
+
+.timestamp {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+/* RESPONSIVE LAYOUT FIXES */
+@media (max-width: 768px) {
+  .herb-journey-app {
+    padding: 15px;
+  }
+
+  .header-container {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .stats-section {
+    justify-content: center;
+  }
+
+  .banner-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .stage-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .photo-preview {
+    flex-direction: column;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .verification-note {
+    font-size: 0.9rem;
+  }
+
+  .timestamp {
+    font-size: 0.75rem;
+  }
+}
+
+/* ========================================================= */
+/* --- NEW STYLES FOR DYNAMIC VERIFICATION STATUS BANNER --- */
+/* ========================================================= */
+
+.herb-banner.verified-status {
+  /* Success Green - Full Verification */
+  background: linear-gradient(135deg, #1B5E20 0%, #388E3C 100%);
+}
+
+.herb-banner.verified-status .verification-badge {
+  /* Ensure verified badge color is bright gold */
+  color: var(--accent-gold); 
+}
+
+.herb-banner.warning-status {
+  /* Warning Orange/Red - Missing Public Anchor */
+  background: linear-gradient(135deg, #EF6C00 0%, #FF9800 100%);
+}
+
+.herb-banner.warning-status .verification-badge {
+  /* Ensure warning badge color is white/light for contrast */
+  color: white; 
+  font-weight: 700;
+}
+
+.herb-banner.pending-status {
+  /* Neutral/Default Blue - Packaged but not yet verified publicly */
+  background: linear-gradient(135deg, #1565C0 0%, #42A5F5 100%);
+}
+
+.herb-banner.default-status {
+  /* Fallback (same as original primary green) */
+  background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+}
+
+/* Style for the link inside the footer */
+.blockchain-tx-hash a {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.blockchain-tx-hash a:hover {
+  color: var(--secondary-green) !important;
+  text-decoration: underline;
+}

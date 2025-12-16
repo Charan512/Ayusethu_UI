@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Manufacturer.css';
+import api from "../api/api"; // ✅ STEP 1: API client
+import { useAuth } from "../context/AuthContext"; // ✅ STEP 3: Auth context
 
 const Manufacturer = () => {
+  // ✅ STEP 3: Get manufacturer ID from auth
+  const { user } = useAuth();
+
   // State for different phases
   const [activePhase, setActivePhase] = useState('receive');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -9,10 +14,10 @@ const Manufacturer = () => {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [showBarcodeImage, setShowBarcodeImage] = useState(false);
 
-const [showProfileCard, setShowProfileCard] = useState(false);
+  const [showProfileCard, setShowProfileCard] = useState(false);
 
   const [quoteForm, setQuoteForm] = useState({
-    manufacturerID: 'MANUF-7890',
+    manufacturerID: user?.id || '', // ✅ STEP 3: Get from auth, not hardcoded
     batchID: '',
     quoteAmount: '',
     validityTime: '',
@@ -42,127 +47,55 @@ const [showProfileCard, setShowProfileCard] = useState(false);
     packagingPhotos: []
   });
 
-  // NOTIFICATION STATES - ADDED
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'admin',
-      category: 'bidding',
-      title: 'Bidding Update',
-      message: 'Your quote for BTH-2024-001 has been accepted by admin',
-      time: '10 minutes ago',
-      read: false,
-      batchId: 'BTH-2024-001'
-    },
-    {
-      id: 2,
-      type: 'admin',
-      category: 'collector',
-      title: 'Collector Assignment',
-      message: 'Collector COL-7421 has been assigned to deliver BTH-2024-002',
-      time: '2 hours ago',
-      read: false,
-      batchId: 'BTH-2024-002'
-    },
-    {
-      id: 3,
-      type: 'admin',
-      category: 'material',
-      title: 'Material Received',
-      message: 'Batch BTH-2024-003 delivered to your facility. Please confirm receipt',
-      time: '1 day ago',
-      read: true,
-      batchId: 'BTH-2024-003'
-    },
-    {
-      id: 4,
-      type: 'admin',
-      category: 'bidding',
-      title: 'New Batch Available',
-      message: 'New batch BTH-2024-004 available for bidding. Quality score: 94%',
-      time: '2 days ago',
-      read: true,
-      batchId: 'BTH-2024-004'
-    },
-    {
-      id: 5,
-      type: 'system',
-      category: 'system',
-      title: 'System Update',
-      message: 'Manufacturing portal updated with new features',
-      time: '3 days ago',
-      read: true
-    }
-  ]);
+  // ❌ FIX 1: REMOVE MOCK NOTIFICATIONS
+  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(2); // 2 unread notifications
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  // Mock data for batches
+  // ✅ STEP 2: FETCH REAL BATCHES FROM BACKEND
   useEffect(() => {
-    const mockBatches = [
-      {
-        id: 'BTH-2024-001',
-        name: 'Immunity Boost Syrup Base',
-        status: 'ready_for_quote',
-        herbType: 'Multi-Herb',
-        quantity: 50,
-        testResults: 'Passed',
-        testScore: 92,
-        testDetails: {
-          microbiological: 'Passed',
-          heavyMetals: 'Passed',
-          activeCompounds: 'Passed',
-          pesticide: 'In Progress',
-          stability: 'Scheduled'
-        },
-        pickupInstructions: 'Collect from Farm Gate 3, Plot 5B. Contact Farmer: Rajesh Kumar - 9876543210',
-        quoteDeadline: '2024-01-25',
-        farmerName: 'Rajesh Kumar',
-        farmLocation: 'Plot 5B, Valley North'
-      },
-      {
-        id: 'BTH-2024-002',
-        name: 'Organic Turmeric Powder',
-        status: 'quote_submitted',
-        herbType: 'Single Herb',
-        quantity: 40,
-        testResults: 'Passed',
-        testScore: 95,
-        testDetails: {
-          microbiological: 'Passed',
-          heavyMetals: 'Passed',
-          activeCompounds: 'Passed',
-          pesticide: 'Passed',
-          stability: 'In Progress'
-        },
-        pickupInstructions: 'Available at Collection Center A. Bring Govt ID and authorization letter.',
-        quoteDeadline: '2024-01-20',
-        farmerName: 'Suresh Patel',
-        farmLocation: 'Farm 12, Southern Plains'
-      },
-      {
-        id: 'BTH-2024-003',
-        name: 'Digestive Health Mix',
-        status: 'manufacturing',
-        herbType: 'Multi-Herb',
-        quantity: 35,
-        testResults: 'Passed',
-        testScore: 88,
-        testDetails: {
-          microbiological: 'Passed',
-          heavyMetals: 'Passed',
-          activeCompounds: 'Passed',
-          pesticide: 'Passed',
-          stability: 'Pending'
-        },
-        pickupInstructions: 'Already delivered to manufacturing unit',
-        quoteDeadline: 'Completed',
-        farmerName: 'Anita Sharma',
-        farmLocation: 'Organic Farm 7'
-      }
-    ];
-    setBatches(mockBatches);
+    fetchAssignedBatches();
+    fetchNotifications(); // ✅ FIX 1: Fetch notifications
   }, []);
+
+  // ✅ FIX 2: Batch field normalization adapter
+  const normalizeBatch = (b) => ({
+    id: b.batch_id,
+    batch_id: b.batch_id, // ✅ FIX 3: Keep both for consistency
+    name: b.herb_name || 'Unknown Herb',
+    herbType: b.species || 'Herbal',
+    quantity: b.quantity || 0,
+    testScore: b.lab_data?.results?.score ?? 0,
+    testResults: b.lab_data?.results?.status || 'Pending',
+    testDetails: b.lab_data?.results || {},
+    farmerName: b.farmer_name || 'Unknown',
+    farmLocation: b.location || 'Unknown',
+    pickupInstructions: b.pickup_instructions || 'Contact admin for details',
+    quoteDeadline: b.quote_deadline || 'N/A',
+    status: b.status,
+    manufacturer_data: b.manufacturer_data,
+  });
+
+  const fetchAssignedBatches = async () => {
+    const res = await api.get("/api/manufacturer/batches");
+    const visibleBatches = res.data.filter(b =>
+      b.status === "bidding_open" ||
+      b.manufacturer_data?.id === user.id
+    );
+
+    setBatches(visibleBatches.map(normalizeBatch));
+  };
+
+
+  // ✅ FIX 1: Fetch notifications from backend
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get("/api/notifications");
+      setNotifications(res.data);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
 
   // NOTIFICATION FUNCTIONS - ADDED
   const markNotificationAsRead = (id) => {
@@ -213,19 +146,25 @@ const [showProfileCard, setShowProfileCard] = useState(false);
     setQuoteForm(prev => ({ ...prev, batchID: batch.id }));
   };
 
-  // Handle quote submission
-  const handleQuoteSubmit = (e) => {
+  // ✅ STEP 4: WIRE QUOTE SUBMISSION TO BACKEND
+  const handleQuoteSubmit = async (e) => {
     e.preventDefault();
-    alert(`Quote submitted for ${quoteForm.batchID}\nAmount: ₹${quoteForm.quoteAmount}/kg\nValidity: ${quoteForm.validityTime}`);
 
-    // Update batch status
-    setBatches(prev => prev.map(batch =>
-      batch.id === quoteForm.batchID
-        ? { ...batch, status: 'quote_submitted' }
-        : batch
-    ));
+    try {
+      await api.post("/api/manufacturer/submit-quote", {
+        batch_id: quoteForm.batchID,
+        price: Number(quoteForm.quoteAmount),
+        validity: quoteForm.validityTime,
+        notes: quoteForm.notes,
+      });
 
-    setActivePhase('manufacturing');
+      alert("Quote submitted successfully. Waiting for admin selection.");
+      setActivePhase('receive');
+      await fetchAssignedBatches();
+    } catch (err) {
+      console.error("Quote submission failed:", err);
+      alert("Failed to submit quote");
+    }
   };
 
   // Handle manufacturing form changes
@@ -243,16 +182,54 @@ const [showProfileCard, setShowProfileCard] = useState(false);
       setPackagingForm(prev => ({ ...prev, packagingPhotos: [...prev.packagingPhotos, ...files] }));
     }
   };
+  const relevantNotifications = notifications.filter(n =>
+    n.role === "Manufacturer"
+  );
+  
+  // ✅ STEP 5: MANUFACTURING SUBMISSION (CRITICAL)
+  const handleManufacturingSubmit = async () => {
+    try {
+      const formData = new FormData();
 
-  // Handle manufacturing submission
-  const handleManufacturingSubmit = () => {
-    alert('Manufacturing process submitted to admin for verification');
-    setActivePhase('packaging');
+      Object.entries(manufacturingForm).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => formData.append(key, v));
+        } else if (value !== null && value !== '') {
+          formData.append(key, value);
+        }
+      });
+
+      formData.append("batch_id", selectedBatch.batch_id); // ✅ FIX 3: Use batch_id
+
+      await api.post("/api/manufacturer/submit-manufacturing", formData);
+
+      alert("Manufacturing data submitted");
+      setActivePhase('packaging');
+    } catch (err) {
+      console.error("Manufacturing submission failed:", err);
+      alert("Manufacturing submission failed");
+    }
   };
 
-  // Handle packaging submission
-  const handlePackagingSubmit = () => {
-    alert('Packaging completed and sent to blockchain');
+  // ✅ STEP 7: FINAL PACKAGING SUBMISSION
+  const handlePackagingSubmit = async () => {
+    try {
+      const formData = new FormData();
+      formData.append("batch_id", selectedBatch.batch_id); // ✅ FIX 3: Use batch_id
+      formData.append("printedTimestamp", packagingForm.printedTimestamp);
+
+      packagingForm.packagingPhotos.forEach(p =>
+        formData.append("photos", p)
+      );
+
+      await api.post("/api/manufacturer/complete-packaging", formData);
+
+      alert("Packaging completed & product sealed");
+      await fetchAssignedBatches();
+    } catch (err) {
+      console.error("Packaging submission failed:", err);
+      alert("Packaging submission failed");
+    }
   };
 
   // Render phase content
@@ -463,259 +440,273 @@ const [showProfileCard, setShowProfileCard] = useState(false);
   );
 
   // Manufacturing Phase
-  const renderManufacturingPhase = () => (
-    <div className="phase-content">
-      <div className="phase-header">
-        <div className="phase-icon">
-          <i className="fas fa-industry"></i>
+  const renderManufacturingPhase = () => {
+    if (!selectedBatch ||
+      selectedBatch.status !== "manufacturing_assigned" ||
+      selectedBatch.manufacturer_data?.id !== user.id) {
+      return (
+        <div className="phase-content">
+          <p className="locked-text">
+            You are not authorized to manufacture this batch.
+          </p>
         </div>
-        <div>
-          <h3>Manufacturing Process</h3>
-          <p>Record manufacturing steps after batch delivery</p>
-        </div>
-      </div>
+      );
+    }
 
-      <div className="manufacturing-form">
-        {/* Receiving Section */}
-        <div className="form-section">
-          <h4 className="section-title">
-            <i className="fas fa-truck-loading"></i> Batch Receiving
-          </h4>
-          <div className="form-row">
-            <div className="form-group">
-              <label>Received Quantity (kg) *</label>
-              <input
-                type="number"
-                value={manufacturingForm.receivedQuantity}
-                onChange={(e) => handleManufacturingChange('receivedQuantity', e.target.value)}
-                placeholder="Enter actual received quantity"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Received Timestamp *</label>
-              <input
-                type="datetime-local"
-                value={manufacturingForm.receivedTimestamp}
-                onChange={(e) => handleManufacturingChange('receivedTimestamp', e.target.value)}
-                required
-              />
-            </div>
+    return (
+      <div className="phase-content">
+        <div className="phase-header">
+          <div className="phase-icon">
+            <i className="fas fa-industry"></i>
+          </div>
+          <div>
+            <h3>Manufacturing Process</h3>
+            <p>Record manufacturing steps after batch delivery</p>
           </div>
         </div>
 
-        {/* Processing Steps */}
-        <div className="form-section">
-          <h4 className="section-title">
-            <i className="fas fa-cogs"></i> Processing Steps
-          </h4>
-
-          <div className="step-grid">
-            <div className="step-card">
-              <div className="step-icon washing">
-                <i className="fas fa-hand-sparkles"></i>
+        <div className="manufacturing-form">
+          {/* Receiving Section */}
+          <div className="form-section">
+            <h4 className="section-title">
+              <i className="fas fa-truck-loading"></i> Batch Receiving
+            </h4>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Received Quantity (kg) *</label>
+                <input
+                  type="number"
+                  value={manufacturingForm.receivedQuantity}
+                  onChange={(e) => handleManufacturingChange('receivedQuantity', e.target.value)}
+                  placeholder="Enter actual received quantity"
+                  required
+                />
               </div>
-              <h5>Washing</h5>
-              <input
-                type="date"
-                value={manufacturingForm.washingDate}
-                onChange={(e) => handleManufacturingChange('washingDate', e.target.value)}
-                placeholder="Washing date"
-              />
-            </div>
-
-            <div className="step-card">
-              <div className="step-icon drying">
-                <i className="fas fa-sun"></i>
+              <div className="form-group">
+                <label>Received Timestamp *</label>
+                <input
+                  type="datetime-local"
+                  value={manufacturingForm.receivedTimestamp}
+                  onChange={(e) => handleManufacturingChange('receivedTimestamp', e.target.value)}
+                  required
+                />
               </div>
-              <h5>Drying</h5>
-              <input
-                type="date"
-                value={manufacturingForm.dryingDate}
-                onChange={(e) => handleManufacturingChange('dryingDate', e.target.value)}
-                placeholder="Drying date"
-              />
-              <input
-                type="number"
-                value={manufacturingForm.dryingTemp}
-                onChange={(e) => handleManufacturingChange('dryingTemp', e.target.value)}
-                placeholder="Temperature (°C)"
-                className="temp-input"
-              />
-            </div>
-
-            <div className="step-card">
-              <div className="step-icon grinding">
-                <i className="fas fa-mortar-pestle"></i>
-              </div>
-              <h5>Grinding</h5>
-              <input
-                type="date"
-                value={manufacturingForm.grindingDate}
-                onChange={(e) => handleManufacturingChange('grindingDate', e.target.value)}
-                placeholder="Grinding date"
-              />
-            </div>
-
-            <div className="step-card">
-              <div className="step-icon extraction">
-                <i className="fas fa-flask"></i>
-              </div>
-              <h5>Extraction</h5>
-              <select
-                value={manufacturingForm.extractionMethod}
-                onChange={(e) => handleManufacturingChange('extractionMethod', e.target.value)}
-              >
-                <option value="">Select method</option>
-                <option value="cold">Cold Extraction</option>
-                <option value="hot">Hot Extraction</option>
-                <option value="supercritical">Supercritical CO2</option>
-                <option value="solvent">Solvent Extraction</option>
-              </select>
-              <textarea
-                value={manufacturingForm.extractionDetails}
-                onChange={(e) => handleManufacturingChange('extractionDetails', e.target.value)}
-                placeholder="Extraction details..."
-                rows="2"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Storage & Final Product */}
-        <div className="form-section">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Storage Conditions</label>
-              <textarea
-                value={manufacturingForm.storageConditions}
-                onChange={(e) => handleManufacturingChange('storageConditions', e.target.value)}
-                placeholder="Temperature, humidity, packaging..."
-                rows="3"
-              />
-            </div>
-            <div className="form-group">
-              <label>Final Product Quantity (kg) *</label>
-              <input
-                type="number"
-                value={manufacturingForm.finalQuantity}
-                onChange={(e) => handleManufacturingChange('finalQuantity', e.target.value)}
-                placeholder="Enter final quantity"
-                required
-              />
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Product Form *</label>
-            <div className="product-form-options">
-              {['powder', 'extract', 'capsules', 'tablets', 'syrup', 'oil'].map(form => (
-                <label key={form} className="form-option">
+          {/* Processing Steps */}
+          <div className="form-section">
+            <h4 className="section-title">
+              <i className="fas fa-cogs"></i> Processing Steps
+            </h4>
+
+            <div className="step-grid">
+              <div className="step-card">
+                <div className="step-icon washing">
+                  <i className="fas fa-hand-sparkles"></i>
+                </div>
+                <h5>Washing</h5>
+                <input
+                  type="date"
+                  value={manufacturingForm.washingDate}
+                  onChange={(e) => handleManufacturingChange('washingDate', e.target.value)}
+                  placeholder="Washing date"
+                />
+              </div>
+
+              <div className="step-card">
+                <div className="step-icon drying">
+                  <i className="fas fa-sun"></i>
+                </div>
+                <h5>Drying</h5>
+                <input
+                  type="date"
+                  value={manufacturingForm.dryingDate}
+                  onChange={(e) => handleManufacturingChange('dryingDate', e.target.value)}
+                  placeholder="Drying date"
+                />
+                <input
+                  type="number"
+                  value={manufacturingForm.dryingTemp}
+                  onChange={(e) => handleManufacturingChange('dryingTemp', e.target.value)}
+                  placeholder="Temperature (°C)"
+                  className="temp-input"
+                />
+              </div>
+
+              <div className="step-card">
+                <div className="step-icon grinding">
+                  <i className="fas fa-mortar-pestle"></i>
+                </div>
+                <h5>Grinding</h5>
+                <input
+                  type="date"
+                  value={manufacturingForm.grindingDate}
+                  onChange={(e) => handleManufacturingChange('grindingDate', e.target.value)}
+                  placeholder="Grinding date"
+                />
+              </div>
+
+              <div className="step-card">
+                <div className="step-icon extraction">
+                  <i className="fas fa-flask"></i>
+                </div>
+                <h5>Extraction</h5>
+                <select
+                  value={manufacturingForm.extractionMethod}
+                  onChange={(e) => handleManufacturingChange('extractionMethod', e.target.value)}
+                >
+                  <option value="">Select method</option>
+                  <option value="cold">Cold Extraction</option>
+                  <option value="hot">Hot Extraction</option>
+                  <option value="supercritical">Supercritical CO2</option>
+                  <option value="solvent">Solvent Extraction</option>
+                </select>
+                <textarea
+                  value={manufacturingForm.extractionDetails}
+                  onChange={(e) => handleManufacturingChange('extractionDetails', e.target.value)}
+                  placeholder="Extraction details..."
+                  rows="2"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Storage & Final Product */}
+          <div className="form-section">
+            <div className="form-row">
+              <div className="form-group">
+                <label>Storage Conditions</label>
+                <textarea
+                  value={manufacturingForm.storageConditions}
+                  onChange={(e) => handleManufacturingChange('storageConditions', e.target.value)}
+                  placeholder="Temperature, humidity, packaging..."
+                  rows="3"
+                />
+              </div>
+              <div className="form-group">
+                <label>Final Product Quantity (kg) *</label>
+                <input
+                  type="number"
+                  value={manufacturingForm.finalQuantity}
+                  onChange={(e) => handleManufacturingChange('finalQuantity', e.target.value)}
+                  placeholder="Enter final quantity"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Product Form *</label>
+              <div className="product-form-options">
+                {['powder', 'extract', 'capsules', 'tablets', 'syrup', 'oil'].map(form => (
+                  <label key={form} className="form-option">
+                    <input
+                      type="radio"
+                      name="productForm"
+                      value={form}
+                      checked={manufacturingForm.productForm === form}
+                      onChange={(e) => handleManufacturingChange('productForm', e.target.value)}
+                    />
+                    <span className="option-label">{form.charAt(0).toUpperCase() + form.slice(1)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Documentation */}
+          <div className="form-section">
+            <h4 className="section-title">
+              <i className="fas fa-file-upload"></i> Documentation
+            </h4>
+
+            <div className="upload-grid">
+              <div className="upload-card">
+                <div className="upload-icon">
+                  <i className="fas fa-file-certificate"></i>
+                </div>
+                <h5>Manufacturing Certificate</h5>
+                <div className="file-upload">
                   <input
-                    type="radio"
-                    name="productForm"
-                    value={form}
-                    checked={manufacturingForm.productForm === form}
-                    onChange={(e) => handleManufacturingChange('productForm', e.target.value)}
+                    type="file"
+                    accept=".pdf,.jpg,.png"
+                    onChange={(e) => handleFileUpload('manufacturingCertificate', e.target.files)}
+                    hidden
+                    id="certificate-upload"
                   />
-                  <span className="option-label">{form.charAt(0).toUpperCase() + form.slice(1)}</span>
-                </label>
-              ))}
+                  <label htmlFor="certificate-upload" className="upload-btn">
+                    <i className="fas fa-cloud-upload-alt"></i> Upload Certificate
+                  </label>
+                  {manufacturingForm.manufacturingCertificate && (
+                    <div className="file-preview">
+                      <i className="fas fa-file-pdf"></i>
+                      <span>{manufacturingForm.manufacturingCertificate.name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="upload-card">
+                <div className="upload-icon">
+                  <i className="fas fa-camera"></i>
+                </div>
+                <h5>Manufacturing Photos</h5>
+                <div className="file-upload">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => handleFileUpload('manufacturingPhotos', e.target.files)}
+                    hidden
+                    id="photos-upload"
+                  />
+                  <label htmlFor="photos-upload" className="upload-btn">
+                    <i className="fas fa-cloud-upload-alt"></i> Upload Photos
+                  </label>
+                  {manufacturingForm.manufacturingPhotos.length > 0 && (
+                    <div className="photos-preview">
+                      <span>{manufacturingForm.manufacturingPhotos.length} photos selected</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="upload-card">
+                <div className="upload-icon">
+                  <i className="fas fa-map-marker-alt"></i>
+                </div>
+                <h5>Geo-tag Location</h5>
+                <input
+                  type="text"
+                  value={manufacturingForm.geoTag}
+                  onChange={(e) => handleManufacturingChange('geoTag', e.target.value)}
+                  placeholder="Latitude, Longitude"
+                />
+                <button className="gps-btn" onClick={() => {
+                  // Mock GPS capture
+                  const mockGPS = `${(Math.random() * 90).toFixed(6)}, ${(Math.random() * 180).toFixed(6)}`;
+                  handleManufacturingChange('geoTag', mockGPS);
+                  alert(`GPS captured: ${mockGPS}`);
+                }}>
+                  <i className="fas fa-location-dot"></i> Capture GPS
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Documentation */}
-        <div className="form-section">
-          <h4 className="section-title">
-            <i className="fas fa-file-upload"></i> Documentation
-          </h4>
-
-          <div className="upload-grid">
-            <div className="upload-card">
-              <div className="upload-icon">
-                <i className="fas fa-file-certificate"></i>
-              </div>
-              <h5>Manufacturing Certificate</h5>
-              <div className="file-upload">
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.png"
-                  onChange={(e) => handleFileUpload('manufacturingCertificate', e.target.files)}
-                  hidden
-                  id="certificate-upload"
-                />
-                <label htmlFor="certificate-upload" className="upload-btn">
-                  <i className="fas fa-cloud-upload-alt"></i> Upload Certificate
-                </label>
-                {manufacturingForm.manufacturingCertificate && (
-                  <div className="file-preview">
-                    <i className="fas fa-file-pdf"></i>
-                    <span>{manufacturingForm.manufacturingCertificate.name}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="upload-card">
-              <div className="upload-icon">
-                <i className="fas fa-camera"></i>
-              </div>
-              <h5>Manufacturing Photos</h5>
-              <div className="file-upload">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => handleFileUpload('manufacturingPhotos', e.target.files)}
-                  hidden
-                  id="photos-upload"
-                />
-                <label htmlFor="photos-upload" className="upload-btn">
-                  <i className="fas fa-cloud-upload-alt"></i> Upload Photos
-                </label>
-                {manufacturingForm.manufacturingPhotos.length > 0 && (
-                  <div className="photos-preview">
-                    <span>{manufacturingForm.manufacturingPhotos.length} photos selected</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="upload-card">
-              <div className="upload-icon">
-                <i className="fas fa-map-marker-alt"></i>
-              </div>
-              <h5>Geo-tag Location</h5>
-              <input
-                type="text"
-                value={manufacturingForm.geoTag}
-                onChange={(e) => handleManufacturingChange('geoTag', e.target.value)}
-                placeholder="Latitude, Longitude"
-              />
-              <button className="gps-btn" onClick={() => {
-                // Mock GPS capture
-                const mockGPS = `${(Math.random() * 90).toFixed(6)}, ${(Math.random() * 180).toFixed(6)}`;
-                handleManufacturingChange('geoTag', mockGPS);
-                alert(`GPS captured: ${mockGPS}`);
-              }}>
-                <i className="fas fa-location-dot"></i> Capture GPS
-              </button>
-            </div>
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={() => setActivePhase('receive')}>
+              <i className="fas fa-arrow-left"></i> Back
+            </button>
+            <button type="button" className="btn-primary" onClick={handleManufacturingSubmit}>
+              <i className="fas fa-paper-plane"></i> Submit to Admin & Blockchain
+            </button>
           </div>
-        </div>
-
-        <div className="form-actions">
-          <button type="button" className="btn-secondary" onClick={() => setActivePhase('receive')}>
-            <i className="fas fa-arrow-left"></i> Back
-          </button>
-          <button type="button" className="btn-primary" onClick={handleManufacturingSubmit}>
-            <i className="fas fa-paper-plane"></i> Submit to Admin & Blockchain
-          </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Packaging Phase
   const renderPackagingPhase = () => (
@@ -744,13 +735,13 @@ const [showProfileCard, setShowProfileCard] = useState(false);
           </h4>
           <div className="form-row">
             <div className="form-group">
-              <label>Label ID *</label>
+              <label>Label ID * (Admin Generated)</label>
               <input
                 type="text"
-                value={packagingForm.labelID}
-                onChange={(e) => setPackagingForm(prev => ({ ...prev, labelID: e.target.value }))}
-                placeholder="Enter label ID"
-                required
+                value={selectedBatch?.manufacturer_data?.label_id || ""}
+                readOnly
+                className="readonly-input"
+                placeholder="Label ID will be assigned by admin"
               />
             </div>
             <div className="form-group">
@@ -771,16 +762,16 @@ const [showProfileCard, setShowProfileCard] = useState(false);
           <div className="barcode-container">
             <div className="barcode-placeholder">
               <i className="fas fa-barcode"></i>
-              <span>PROD-{selectedBatch?.id?.replace('BTH-', '') || 'XXXX'}-PKG</span>
+              <span>PROD-{selectedBatch?.manufacturer_data?.label_id || 'PENDING'}</span>
             </div>
             <div className="barcode-info">
               <p>Scan this barcode to verify product authenticity</p>
               <button
-  className="btn-secondary"
-  onClick={() => window.open("https://res.cloudinary.com/domogztsv/image/upload/v1765720436/WhatsApp_Image_2025-12-14_at_6.07.45_PM_ehfirz.jpg", "_blank")}
->
-  <i className="fas fa-print"></i> Print Barcode
-</button>
+                className="btn-secondary"
+                onClick={() => window.open("https://res.cloudinary.com/domogztsv/image/upload/v1765720436/WhatsApp_Image_2025-12-14_at_6.07.45_PM_ehfirz.jpg", "_blank")}
+              >
+                <i className="fas fa-print"></i> Print Barcode
+              </button>
             </div>
           </div>
         </div>
@@ -902,23 +893,23 @@ const [showProfileCard, setShowProfileCard] = useState(false);
           </div>
 
           {/* USER PROFILE */}
-<div className="vhc-user-profile">
-  <div
-    className="vhc-avatar"
-    onClick={() => setShowProfileCard(prev => !prev)}
-  >
-    M
-  </div>
+          <div className="vhc-user-profile">
+            <div
+              className="vhc-avatar"
+              onClick={() => setShowProfileCard(prev => !prev)}
+            >
+              M
+            </div>
 
-  {showProfileCard && (
-    <div className="vhc-user-card-dropdown">
-      <div className="vhc-user-name">Herbal Solutions Inc.</div>
-      <div className="vhc-user-id">Manufacturer ID: MANUF-7890</div>
-      <div className="vhc-user-email">Email: contact@herbal.com</div>
-      <div className="vhc-user-role">Role: Manufacturer</div>
-    </div>
-  )}
-</div>
+            {showProfileCard && (
+              <div className="vhc-user-card-dropdown">
+                <div className="vhc-user-name">{user?.name || 'Manufacturer'}</div>
+                <div className="vhc-user-id">Manufacturer ID: {user?.id || 'N/A'}</div>
+                <div className="vhc-user-email">Email: {user?.email || 'N/A'}</div>
+                <div className="vhc-user-role">Role: {user?.role || 'Manufacturer'}</div>
+              </div>
+            )}
+          </div>
 
         </div>
       </nav>

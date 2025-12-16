@@ -1,6 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "../styles/Collector.module.css";
 import { Bell, X, CheckCircle, AlertCircle, MapPin, Camera } from 'lucide-react';
+const API_BASE = import.meta.env.VITE_API_PROD || "http://localhost:8000";
+
+// ✅ FIX #6: Improved token handling with validation
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    localStorage.clear();
+    window.location.href = "/";
+    return {};
+  }
+  return { Authorization: `Bearer ${token}` };
+};
+
+// ✅ FIX #6: Global API error handler
+const handleApiError = (res) => {
+  if (res.status === 401 || res.status === 403) {
+    localStorage.clear();
+    window.location.href = "/";
+    throw new Error("Session expired");
+  }
+};
+
 
 const STAGE_DATA = [
   {
@@ -10,75 +32,187 @@ const STAGE_DATA = [
   {
     id: 2,
     title: "Stage 2",
+    description: "Growth monitoring"
   },
   {
     id: 3,
     title: "Stage 3",
+    description: "Health assessment"
   },
   {
     id: 4,
     title: "Stage 4",
+    description: "Pre-harvest check"
   },
   {
     id: 5,
     title: "Stage 5",
-  }
+    description: "Final verification"
+  },
 ];
 
-const NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "admin",
-    title: "New Quality Standards Update",
-    message: "Updated AAA grading criteria effective from Nov 15th",
-    time: "2 hours ago",
-    read: false
-  },
-  {
-    id: 2,
-    type: "tester",
-    title: "Lab Test Results Ready",
-    message: "Batch BATCH-2024-7283 passed all quality tests",
-    time: "1 day ago",
-    read: false
-  },
-  {
-    id: 3,
-    type: "system",
-    title: "Weather Alert",
-    message: "Heavy rain predicted in South region tomorrow",
-    time: "2 days ago",
-    read: true
-  },
-  {
-    id: 4,
-    type: "admin",
-    title: "Monthly Collection Target",
-    message: "You've achieved 85% of monthly target",
-    time: "3 days ago",
-    read: true
-  },
-  {
-    id: 5,
-    type: "tester",
-    title: "Sample Rejection",
-    message: "Batch BATCH-2024-7251 rejected due to moisture content",
-    time: "5 days ago",
-    read: true
-  }
-];
+// \u274c FIX #7: Removed hardcoded NOTIFICATIONS - fetch from backend instead
 
 function App() {
-  const [form, setForm] = useState({
-    herb: "Tulsi (Holy Basil)",
-    qty: "25.5",
-    date: "",
-    plot: "Plot 5B – Valley North",
-    quality: "Premium (AAA)",
-    weather: "Clear · 26°C · Humidity 65%",
-    gps: "68.165408, 114.720211",
-    notes: "Early morning harvest, no spray in last 30 days, leaves hand-plucked. Optimal sunlight exposure throughout growth cycle."
-  });
+  // ✅ CRITICAL: Photo hash generation for ML integrity
+  const generatePhotoHash = async (file) => {
+    if (!crypto?.subtle) {
+      throw new Error("Crypto API not supported");
+    }
+
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // 2️⃣ ML VERIFICATION FUNCTION
+  const verifyLeafWithML = async () => {
+    if (!stage5Form.finalPhoto) {
+      setToast("❌ Upload leaf image first");
+      return;
+    }
+
+    if (!activeBatch?.batch_id) {
+      setToast("❌ No active batch");
+      return;
+    }
+
+    try {
+      setVerifying(true);
+      setToast("🔍 Verifying herb species...");
+
+      // ✅ Generate hash of current photo
+      const currentHash = await generatePhotoHash(stage5Form.finalPhoto);
+
+      const formData = new FormData();
+      formData.append("image", stage5Form.finalPhoto);
+      formData.append("batch_id", activeBatch.batch_id);
+
+      // Add 20s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const res = await fetch(`${API_BASE}/api/collector/verify-leaf`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+        },
+        body: formData,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      // ⚠️ FIX 4: Check status before parsing JSON
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || "Verification failed");
+      }
+
+      const data = await res.json();
+
+      // Validate response schema
+      if (typeof data.match !== "boolean" || !data.predicted_species) {
+        throw new Error("Invalid ML response");
+      }
+
+      setMlResult(data);
+
+      if (data.match === true) {
+        setIsLeafVerified(true);
+        setVerifiedPhotoHash(currentHash); // ✅ CRITICAL: Store hash
+        setToast(`✅ Verified: ${data.predicted_species}`);
+      } else {
+        setIsLeafVerified(false);
+        setToast(
+          `❌ Mismatch! Predicted: ${data.predicted_species}, Expected: ${data.expected_species}`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      setIsLeafVerified(false);
+      if (err.name === 'AbortError') {
+        setToast("❌ Verification timeout (20s)");
+      } else {
+        setToast("❌ ML verification failed");
+      }
+    } finally {
+      setVerifying(false);
+      setTimeout(() => setToast(""), 4000);
+    }
+  };
+
+  const submitStage5 = async () => {
+    // 5️⃣ BLOCK SUBMISSION UNLESS VERIFIED
+    if (!isLeafVerified) {
+      setToast("❌ Herb not verified. Cannot submit.");
+      return;
+    }
+
+    // ✅ CRITICAL: Validate photo hasn't changed since ML verification
+    try {
+      const currentHash = await generatePhotoHash(stage5Form.finalPhoto);
+      if (currentHash !== verifiedPhotoHash) {
+        setToast("❌ Photo changed after verification. Re-verify.");
+        setIsLeafVerified(false);
+        return;
+      }
+    } catch (err) {
+      setToast("❌ Photo validation failed");
+      return;
+    }
+
+    if (!activeBatch?.batch_id) {
+      setToast("❌ No active batch");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("batch_id", activeBatch.batch_id);
+    formData.append("stage", 5);
+    formData.append("notes", "Final harvest completed");
+    formData.append("photo", stage5Form.finalPhoto);
+    // \u2705 CRITICAL: Send all required Stage 5 data
+    formData.append("final_quantity", stage5Form.finalQuantity || "");
+    formData.append("harvest_date", stage5Form.finalHarvestDate || "");
+    formData.append("geotag", stage5Form.finalGeotag || "");
+    formData.append("dispatch_auth", stage5Form.dispatchAuth || false);
+    formData.append("sample_collected", stage5Form.sampleCollected || false);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/collector/update-stage`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+        },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        handleApiError(res);
+        throw new Error("Submission failed");
+      }
+
+
+      // ✅ Refresh batch state
+      const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
+        headers: getAuthHeaders()
+      });
+      const batchData = await batchRes.json();
+      setActiveBatch(batchData);
+      setCurrentStage(batchData.current_stage);
+
+      setToast("✅ Stage 5 completed!");
+      setIsLeafVerified(false);
+      setVerifiedPhotoHash(null);
+
+    } catch (err) {
+      console.error(err);
+      setToast("❌ Failed to submit final stage");
+    }
+  };
+
 
   const [stage1Form, setStage1Form] = useState({
     farmerName: "",
@@ -118,7 +252,7 @@ function App() {
   });
 
   const [stage5Form, setStage5Form] = useState({
-    batchId: "BATCH-" + new Date().getFullYear() + "-" + Math.floor(Math.random() * 10000),
+    batchId: "",
     finalHarvestDate: "",
     finalQuantity: "",
     sampleCollected: false,
@@ -127,18 +261,149 @@ function App() {
     dispatchAuth: false
   });
 
+
+  // ✅ BACKEND-DRIVEN STATE
+  const [activeBatch, setActiveBatch] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  // ✅ CRITICAL: Separate farmer submission from collector approval
+  const [farmerSubmitted, setFarmerSubmitted] = useState({
+    2: false,
+    3: false,
+    4: false
+  });
+
   const [currentStage, setCurrentStage] = useState(1);
-  const [stageStatus, setStageStatus] = useState(["current", "waiting", "waiting", "waiting", "waiting"]);
   const [toast, setToast] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]); // ✅ FIX #7: Fetch from backend
   const [showProfile, setShowProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState("stage1");
+  // ✅ FIX #2: Renamed to activeNotificationTab (used in UI)
+  const [activeNotificationTab, setActiveNotificationTab] = useState("admin");
   const [showCreateBatchDialog, setShowCreateBatchDialog] = useState(false);
-  const [batchIdFromAdmin, setBatchIdFromAdmin] = useState("");
+  const isBatchLocked =
+  activeBatch?.current_stage === 5 &&
+  activeBatch?.completed_stages?.includes(5);
+
+  // 1️⃣ ML VERIFICATION STATES (Stage-5)
+  const [isLeafVerified, setIsLeafVerified] = useState(false);
+  const [mlResult, setMlResult] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifiedPhotoHash, setVerifiedPhotoHash] = useState(null);
 
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
+  const stage1PhotoURLRef = useRef(null);
+  const stage5PhotoURLRef = useRef(null);
+
+
+  // \u2705 BACKEND-DRIVEN: Load user & batch state on mount
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        setLoading(true);
+
+        // 1. Validate user from backend (not localStorage)
+        const userRes = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: getAuthHeaders()
+        });
+        handleApiError(userRes);
+        const userData = await userRes.json();
+
+        if (userData.role !== "Collector") {
+          window.location.href = "/";
+          return;
+        }
+
+        setUser(userData);
+
+        // 2. Load active batch
+        const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
+          headers: getAuthHeaders()
+        });
+        handleApiError(batchRes);
+        const batchData = await batchRes.json();
+
+        if (batchData) {
+          setActiveBatch(batchData);
+          setCurrentStage(batchData.current_stage);
+          [2, 3, 4].forEach(stage => {
+            fetchStageData(stage);
+          });
+          // Populate Stage 5 form with batch ID
+          setStage5Form(prev => ({
+            ...prev,
+            batchId: batchData.batch_id
+          }));
+          // ✅ CRITICAL: Do NOT initialize farmerSubmitted from completed_stages
+          // farmerSubmitted is set by fetchStageData() only
+          // completed_stages is used by getStageStatus() for UI display
+        }
+
+      } catch (err) {
+        console.error("Initialization failed:", err);
+        setToast("❌ Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
+  useEffect(() => {
+    if (stage1Form.farmPhoto) {
+      stage1PhotoURLRef.current = URL.createObjectURL(stage1Form.farmPhoto);
+    }
+    return () => {
+      if (stage1PhotoURLRef.current) {
+        URL.revokeObjectURL(stage1PhotoURLRef.current);
+        stage1PhotoURLRef.current = null;
+      }
+    };
+  }, [stage1Form.farmPhoto]);
+
+  useEffect(() => {
+    if (stage5Form.finalPhoto) {
+      stage5PhotoURLRef.current = URL.createObjectURL(stage5Form.finalPhoto);
+    }
+    return () => {
+      if (stage5PhotoURLRef.current) {
+        URL.revokeObjectURL(stage5PhotoURLRef.current);
+        stage5PhotoURLRef.current = null;
+      }
+    };
+  }, [stage5Form.finalPhoto]);
+
+
+  // \u2705 FIX #7 & #9: Fetch real notifications from backend with polling
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/notifications`, {
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) {
+        handleApiError(res);
+        return;
+      }
+      const data = await res.json();
+      // \u2705 Normalize notification schema
+      const normalized = data.map(n => ({
+        ...n,
+        category: n.category || n.role || "system"
+      }));
+      setNotifications(normalized);
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // \u2705 FIX #9: Poll notifications every 30s
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close notifications when clicking outside
   useEffect(() => {
@@ -156,17 +421,23 @@ function App() {
     };
   }, []);
 
+  // ✅ CRITICAL: Derive stage status from backend state
+  const getStageStatus = (stageId) => {
+    if (!activeBatch) return "waiting";
+    const completedStages = activeBatch.completed_stages ?? [];
+    if (completedStages.includes(stageId)) return "done";
+    if (stageId === activeBatch.current_stage) return "current";
+    if (stageId < activeBatch.current_stage) return "done";
+    return "waiting";
+  };
+
+  // ===== FORM UPDATE HELPERS =====
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
-    setForm(f => ({ ...f, date: today }));
     setStage1Form(s => ({ ...s, visitDate: today }));
     setStage4Form(s => ({ ...s, expectedHarvestDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0] }));
     setStage5Form(s => ({ ...s, finalHarvestDate: today }));
   }, []);
-
-  const updateForm = (key, value) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-  };
 
   const updateStage1Form = (key, value) => {
     setStage1Form(prev => ({ ...prev, [key]: value }));
@@ -188,37 +459,6 @@ function App() {
     setStage5Form(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleGPS = () => {
-    if (!navigator.geolocation) {
-      setToast("❌ GPS not supported on this device");
-      return;
-    }
-
-    setToast("📍 Capturing GPS location...");
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newGPS = `${latitude.toFixed(8)}, ${longitude.toFixed(8)}`;
-
-        updateForm("gps", newGPS);
-        setToast("✅ GPS location captured!");
-
-        setTimeout(() => setToast(""), 3000);
-      },
-      (error) => {
-        setToast("❌ Unable to fetch GPS. Give location permission.");
-        console.error(error);
-        setTimeout(() => setToast(""), 3000);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  };
-
   const handleStage1GPS = () => {
     if (!navigator.geolocation) {
       setToast("❌ GPS not supported on this device");
@@ -235,19 +475,23 @@ function App() {
         const coords = `${latitude.toFixed(8)}, ${longitude.toFixed(8)}`;
         updateStage1Form("geotag", coords);
 
-        // Step 2: Reverse Geocode (Fetch full address)
+        // Step 2: Reverse Geocode via backend (avoid rate limits)
         try {
-          const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`;
-
-          const res = await fetch(url, {
+          const res = await fetch(`${API_BASE}/api/utils/reverse-geocode`, {
+            method: "POST",
             headers: {
-              "User-Agent": "HerbChain-Farmer-Portal/1.0",
-              "Accept": "application/json"
-            }
+              ...getAuthHeaders(),
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ lat: latitude, lon: longitude })
           });
 
+          if (!res.ok) {
+            handleApiError(res);
+            return;
+          }
+
           const data = await res.json();
-          console.log("REVERSE GEOCODE RESPONSE:", data);
 
           if (data && data.display_name) {
             updateStage1Form("exactAddress", data.display_name);
@@ -255,10 +499,9 @@ function App() {
           } else {
             setToast("⚠️ No address found for this location");
           }
-
         } catch (err) {
-          console.error("Reverse geocode error:", err);
-          setToast("⚠️ GPS OK but address lookup failed.");
+          console.error("Reverse geocode failed:", err);
+          setToast("⚠️ Could not fetch address");
         }
 
         setTimeout(() => setToast(""), 3000);
@@ -294,29 +537,33 @@ function App() {
         const coords = `${latitude.toFixed(8)}, ${longitude.toFixed(8)}`;
         updateStage5Form("finalGeotag", coords);
 
-        // Step 2: Reverse Geocode (Fetch full address)
+        // Step 2: Reverse Geocode via backend
         try {
-          const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`;
-
-          const res = await fetch(url, {
+          const res = await fetch(`${API_BASE}/api/utils/reverse-geocode`, {
+            method: "POST",
             headers: {
-              "User-Agent": "HerbChain-Farmer-Portal/1.0",
-              "Accept": "application/json"
-            }
+              ...getAuthHeaders(),
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ lat: latitude, lon: longitude })
           });
 
+          if (!res.ok) {
+            handleApiError(res);
+            return;
+          }
+
           const data = await res.json();
-          console.log("REVERSE GEOCODE RESPONSE:", data);
 
           if (data && data.display_name) {
-            setToast("✅ Final GPS location captured!");
+            setToast("\u2705 Final GPS location captured!");
           } else {
-            setToast("⚠️ GPS location captured, but no address found");
+            setToast("\u26a0\ufe0f GPS location captured, but no address found");
           }
 
         } catch (err) {
-          console.error("Reverse geocode error:", err);
-          setToast("✅ GPS location captured!");
+          console.error("Reverse geocode failed:", err);
+          setToast("\u2705 GPS location captured!");
         }
 
         setTimeout(() => setToast(""), 3000);
@@ -342,6 +589,10 @@ function App() {
       setToast("✅ Farm photo uploaded successfully!");
     } else if (stage === 5) {
       updateStage5Form("finalPhoto", file);
+      // ✅ CRITICAL: Reset ML verification when photo changes
+      setIsLeafVerified(false);
+      setMlResult(null);
+      setVerifiedPhotoHash(null);
       setToast("✅ Final harvest photo uploaded!");
     } else if (stage === 2) {
       const newPhotos = [...stage2Form.growthPhotos, file];
@@ -359,101 +610,257 @@ function App() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const handleMultiplePhotoUpload = (e, stage) => {
-    const files = Array.from(e.target.files);
-    if (stage === 2) {
-      const newPhotos = [...stage2Form.growthPhotos, ...files];
-      updateStage2Form("growthPhotos", newPhotos);
-      setToast(`✅ ${files.length} growth photos uploaded!`);
-    } else if (stage === 3) {
-      const newPhotos = [...stage3Form.assessmentPhotos, ...files];
-      updateStage3Form("assessmentPhotos", newPhotos);
-      setToast(`✅ ${files.length} assessment photos uploaded!`);
-    } else if (stage === 4) {
-      const newPhotos = [...stage4Form.preHarvestPhotos, ...files];
-      updateStage4Form("preHarvestPhotos", newPhotos);
-      setToast(`✅ ${files.length} pre-harvest photos uploaded!`);
-    }
-    setTimeout(() => setToast(""), 3000);
-  };
-
-  const removePhoto = (stage, index) => {
-    if (stage === 2) {
-      const newPhotos = stage2Form.growthPhotos.filter((_, i) => i !== index);
-      updateStage2Form("growthPhotos", newPhotos);
-      setToast("✅ Photo removed!");
-    } else if (stage === 3) {
-      const newPhotos = stage3Form.assessmentPhotos.filter((_, i) => i !== index);
-      updateStage3Form("assessmentPhotos", newPhotos);
-      setToast("✅ Photo removed!");
-    } else if (stage === 4) {
-      const newPhotos = stage4Form.preHarvestPhotos.filter((_, i) => i !== index);
-      updateStage4Form("preHarvestPhotos", newPhotos);
-      setToast("✅ Photo removed!");
-    }
-    setTimeout(() => setToast(""), 2000);
-  };
-
+  // \u2705 BACKEND-DRIVEN: Lock stage navigation
   const handleStageClick = (stageId) => {
+    if (!activeBatch) {
+      setToast("❌ No active batch");
+      return;
+    }
+    if (activeBatch?.current_stage > 5) {
+      setToast("❌ Batch is locked");
+      return;
+    }
+
+
+    // Only allow navigation to completed or current stages
+    if (stageId > activeBatch.current_stage) {
+      setToast("❌ Complete previous stages first");
+      return;
+    }
+
+    if (
+      stageId >= 2 &&
+      stageId <= 4 &&
+      stageId === activeBatch.current_stage &&
+      !farmerSubmitted[stageId]
+    ) {
+      setToast("❌ Farmer has not submitted this stage yet");
+      return;
+    }
+
+
+
     setCurrentStage(stageId);
-    setActiveTab(`stage${stageId}`);
     setToast(`Stage ${stageId}`);
     setTimeout(() => setToast(""), 3000);
+
+    // ✅ CRITICAL: Only load data if stage is submitted
+    if (
+      stageId >= 2 &&
+      stageId <= 4 &&
+      farmerSubmitted[stageId] &&
+      stageId === activeBatch.current_stage
+    ) {
+      fetchStageData(stageId);
+    }
+
   };
 
-  const markStageDone = (stageId) => {
-    const newStatus = [...stageStatus];
-    newStatus[stageId - 1] = "done";
-    if (stageId < 5) newStatus[stageId] = "current";
-    setStageStatus(newStatus);
+  // \u2705 BACKEND-DRIVEN: Fetch farmer submissions
+  const fetchStageData = async (stage) => {
+    if (!activeBatch?.batch_id) return;
 
-    setToast(`✅ Stage ${stageId} completed!`);
-    setTimeout(() => setToast(""), 3000);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/collector/batch/${activeBatch.batch_id}/stage/${stage}`,
+        { headers: getAuthHeaders() }
+      );
+      if (!res.ok) {
+        handleApiError(res);
+        return;
+      }
 
-    if (stageId === 5) {
-      setTimeout(() => {
-        setToast("🎉 Batch completed and ready for dispatch!");
-      }, 500);
+      const data = await res.json();
+
+      // ✅ CRITICAL: Set submission status from backend
+      setFarmerSubmitted(prev => ({
+        ...prev,
+        [stage]: Boolean(data?.submitted)
+      }));
+
+
+      // Populate form with farmer data
+      if (stage === 2) {
+        setStage2Form(prev => ({
+          ...prev,
+          growthPhotos: data.photos || prev.growthPhotos,
+        }));
+      } else if (stage === 3) {
+        setStage3Form(prev => ({
+          ...prev,
+          assessmentPhotos: data.photos || [],
+          recommendations: data.notes || ""
+        }));
+      } else if (stage === 4) {
+        setStage4Form(prev => ({
+          ...prev,
+          preHarvestPhotos: data.photos || [],
+          issues: data.notes || ""
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load stage data:", err);
     }
   };
 
-  const handleCreateBatchClick = () => {
-    // Generate a batch ID from admin (simulated)
-    const adminBatchId = `BATCH-${new Date().getFullYear()}-${Math.floor(Math.random() * 9000 + 1000)}-ADM`;
-    setBatchIdFromAdmin(adminBatchId);
+  // \u274c DELETED: markStageDone - frontend stage tracking removed
 
-    // Show the dialog
-    setShowCreateBatchDialog(true);
+  // \u2705 BACKEND-DRIVEN: Approve stage with validation
+  const approveStage = async (stage) => {
+    // Validate stage order
+    if (!activeBatch) {
+      setToast("\u274c No active batch");
+      return;
+    }
+
+    if (stage !== activeBatch.current_stage) {
+      setToast("❌ Cannot approve out-of-order stage");
+      return;
+    }
+
+    if (!farmerSubmitted[stage]) {
+      setToast("❌ Farmer has not submitted this stage");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("batch_id", activeBatch.batch_id);
+      formData.append("stage", stage);
+      formData.append("notes", `Stage ${stage} approved by collector`);
+
+      const res = await fetch(`${API_BASE}/api/collector/update-stage`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData
+      });
+
+      if (!res.ok) {
+        handleApiError(res);
+        throw new Error("Approval failed");
+      }
+
+      // \u2705 Refresh batch state from backend
+      const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
+        headers: getAuthHeaders()
+      });
+      const batchData = await batchRes.json();
+      setActiveBatch(batchData);
+      setCurrentStage(batchData.current_stage);
+      [2, 3, 4].forEach(stage => {
+        fetchStageData(stage);
+      });
+      setToast(`\u2705 Stage ${stage} approved`);
+    } catch (err) {
+      console.error(err);
+      setToast(`\u274c Failed to approve Stage ${stage}`);
+    }
   };
 
-  const confirmCreateBatch = () => {
+  const handleCreateBatchClick = async () => {
+    if (
+      !stage1Form.farmerName ||
+      !stage1Form.fid ||
+      !stage1Form.species ||
+      !stage1Form.visitDate ||
+      !stage1Form.geotag ||
+      !stage1Form.estimatedQty
+    ) {
+      setToast("❌ Fill all required fields");
+      return;
+    }
+
+    try {
+      // ✅ FIX #1: Use collector-specific endpoint
+      const res = await fetch(`${API_BASE}/api/collector/create-batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({
+          species: stage1Form.species,
+          farmId: stage1Form.fid,
+          startDate: stage1Form.visitDate,
+          coords: stage1Form.geotag,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Batch creation failed");
+
+      const data = await res.json();
+      setActiveBatch(data);
+      setCurrentStage(data.current_stage || 1);
+      setStage5Form(prev => ({ ...prev, batchId: data.batch_id }));
+      // 🔧 RESET ML STATE
+      setIsLeafVerified(false);
+      setMlResult(null);
+      setVerifiedPhotoHash(null);
+      setShowCreateBatchDialog(true);
+
+    } catch (err) {
+      console.error(err);
+      setToast("❌ Failed to create batch");
+    }
+  };
+  const uploadStage1Photo = async () => {
+    if (!activeBatch?.batch_id) {
+      setToast("❌ No active batch");
+      return;
+    }
+    if (!stage1Form.farmPhoto) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("batch_id", activeBatch?.batch_id || "");
+      formData.append("stage", 1);
+      formData.append("notes", stage1Form.notes || "Initial plantation");
+      formData.append("photo", stage1Form.farmPhoto);
+
+      // ✅ FIX #1: Use collector-specific endpoint
+      const res = await fetch(`${API_BASE}/api/collector/update-stage`, {
+        method: "POST",
+        headers: { ...getAuthHeaders() },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Stage-1 upload failed");
+    } catch (err) {
+      console.error(err);
+      setToast("❌ Failed to upload stage-1 photo");
+    }
+  };
+
+
+  const confirmCreateBatch = async () => {
     // Close dialog
     setShowCreateBatchDialog(false);
 
-    // Update stage 5 with the batch ID from admin
-    updateStage5Form("batchId", batchIdFromAdmin);
+    // Upload Stage 1 photo
+    await uploadStage1Photo();
 
-    // Move to stage 2
-    const newStatus = [...stageStatus];
-    newStatus[0] = "done";
-    newStatus[1] = "current";
-    setStageStatus(newStatus);
-    setCurrentStage(2);
-    setActiveTab("stage2");
-
-    setToast(`✅ New batch created: ${batchIdFromAdmin}`);
+    // ✅ Refresh batch state from backend (don't manually advance)
+    try {
+      const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
+        headers: getAuthHeaders()
+      });
+      handleApiError(batchRes);
+      const batchData = await batchRes.json();
+      if (batchData) {
+        setActiveBatch(batchData);
+        setCurrentStage(batchData.current_stage);
+      }
+      setToast(`✅ Batch created successfully`);
+    } catch (err) {
+      console.error("Failed to refresh batch:", err);
+    }
     setTimeout(() => setToast(""), 4000);
   };
 
+  // ✅ FIX #1: Removed auto-read on dropdown open (Option A)
   const toggleNotificationDropdown = () => {
-    const newShowState = !showNotifications;
-    setShowNotifications(newShowState);
+    setShowNotifications(!showNotifications);
     setShowProfile(false);
-
-    // Mark all as read when opening notifications
-    if (newShowState) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
   };
 
   const toggleProfileDropdown = () => {
@@ -462,15 +869,35 @@ function App() {
   };
 
   const handleLogout = () => {
-    console.log("Logout initiated");
-    alert("Logout successful");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/";
   };
 
-  const handleMarkNotificationRead = (id) => {
-    setNotifications(prev => prev.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    ));
+
+  const handleMarkNotificationRead = async (id) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/notifications/${id}/read`,
+        {
+          method: "PUT",
+          headers: getAuthHeaders(),
+        }
+      );
+      if (!res.ok) {
+        handleApiError(res);
+        return;
+      }
+
+
+      setNotifications(prev =>
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
+      );
+    } catch (err) {
+      console.error("Failed to mark notification read", err);
+    }
   };
+
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -488,11 +915,12 @@ function App() {
       default: return "PENDING";
     }
   };
-
   const unreadCount = notifications.filter(n => !n.read).length;
 
+
+
   const renderTimelineItem = (stage) => {
-    const status = stageStatus[stage.id - 1];
+    const status = getStageStatus(stage.id);
 
     return (
       <div
@@ -515,17 +943,18 @@ function App() {
             {getStatusText(status)}
           </div>
         </div>
-        {/* {status === "current" && (
+        {status === "current" && stage.id !== 5 && farmerSubmitted[stage.id] && (
           <button
             className={styles["vhc-mark-done-btn"]}
             onClick={(e) => {
               e.stopPropagation();
-              markStageDone(stage.id);
+              approveStage(stage.id);
             }}
           >
             Mark Complete
-          </button>
-        )} */}
+          </button>)
+        }
+
       </div>
     );
   };
@@ -655,6 +1084,7 @@ function App() {
                     type="button"
                     className={`${styles["vhc-btn"]} ${styles["vhc-btn-secondary"]}`}
                     onClick={handleStage1GPS}
+                    disabled={isBatchLocked}
                   >
                     <MapPin size={16} /> Capture GPS
                   </button>
@@ -677,7 +1107,7 @@ function App() {
                 <div className={styles["vhc-photo-upload"]}>
                   {stage1Form.farmPhoto ? (
                     <div className={styles["vhc-photo-preview"]}>
-                      <img src={URL.createObjectURL(stage1Form.farmPhoto)} alt="Farm preview" />
+                      <img src={stage1PhotoURLRef.current} />
                       <button
                         className={styles["vhc-remove-photo"]}
                         onClick={() => updateStage1Form("farmPhoto", null)}
@@ -692,7 +1122,12 @@ function App() {
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handlePhotoUpload(1, e.target.files[0])}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handlePhotoUpload(1, e.target.files[0]);
+                          }
+                        }}
+
                         hidden
                       />
                     </label>
@@ -716,7 +1151,7 @@ function App() {
               <button
                 className={styles["vhc-create-batch-btn"]}
                 onClick={handleCreateBatchClick}
-                disabled={!stage1Form.farmerName || !stage1Form.fid || !stage1Form.species}
+                disabled={isBatchLocked || !stage1Form.farmerName || !stage1Form.fid || !stage1Form.species || !stage1Form.visitDate || !stage1Form.geotag || !stage1Form.estimatedQty}
               >
                 <CheckCircle size={20} /> Create New Herb Batch
               </button>
@@ -724,139 +1159,139 @@ function App() {
           </div>
         );
 
-case 2:
-  return (
-    <div className={styles["vhc-stage-content"]}>
-      <h3 className={styles["vhc-stage-title"]}>
-        Stage 2: Growth Monitoring
-      </h3>
+      case 2:
+        return (
+          <div className={styles["vhc-stage-content"]}>
+            <h3 className={styles["vhc-stage-title"]}>
+              Stage 2: Growth Monitoring
+            </h3>
 
-      {/* STATUS BOX */}
-      <div className={styles["vhc-waiting-box"]}>
-        {stage2Form.growthPhotos.length === 0 ? (
-          <>
-            <Camera size={28} />
-            <p>Waiting for farmer to upload growth data</p>
-            <span>No submission received yet</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle size={28} />
-            <p>Farmer has submitted growth data</p>
-            <span>Data is locked and cannot be viewed</span>
-          </>
-        )}
-      </div>
+            {/* STATUS BOX */}
+            <div className={styles["vhc-waiting-box"]}>
+              {!farmerSubmitted[2] ? (
+                <>
+                  <Camera size={28} />
+                  <p>Waiting for farmer to upload growth data</p>
+                  <span>No submission received yet</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={28} />
+                  <p>Farmer has submitted growth data</p>
+                  <span>Data is locked and cannot be viewed</span>
+                </>
+              )}
+            </div>
 
-      {/* ACTION */}
-      <div className={styles["vhc-create-batch-section"]}>
-        <button
-          className={styles["vhc-create-batch-btn"]}
-          disabled={stage2Form.growthPhotos.length === 0}
-          onClick={() => markStageDone(2)}
-        >
-          <CheckCircle size={20} />
-          Approve Growth Monitoring
-        </button>
+            {/* ACTION */}
+            <div className={styles["vhc-create-batch-section"]}>
+              <button
+                className={styles["vhc-create-batch-btn"]}
+                disabled={isBatchLocked || !stage5Form.batchId || !farmerSubmitted[2]}
+                onClick={() => approveStage(2)}
+              >
+                <CheckCircle size={20} />
+                Approve Growth Monitoring
+              </button>
 
-        {stage2Form.growthPhotos.length === 0 && (
-          <p className={styles["vhc-verification-note"]}>
-            Approval enabled only after farmer submission
-          </p>
-        )}
-      </div>
-    </div>
-  );
+              {!farmerSubmitted[2] && (
+                <p className={styles["vhc-verification-note"]}>
+                  Approval enabled only after farmer submission
+                </p>
+              )}
+            </div>
+          </div>
+        );
 
 
       case 3:
-  return (
-    <div className={styles["vhc-stage-content"]}>
-      <h3 className={styles["vhc-stage-title"]}>
-        Stage 3: Growth Monitoring
-      </h3>
+        return (
+          <div className={styles["vhc-stage-content"]}>
+            <h3 className={styles["vhc-stage-title"]}>
+              Stage 3: Health Assessment
+            </h3>
 
-      {/* STATUS BOX */}
-      <div className={styles["vhc-waiting-box"]}>
-        {stage2Form.growthPhotos.length === 0 ? (
-          <>
-            <Camera size={28} />
-            <p>Waiting for farmer to upload growth data</p>
-            <span>No submission received yet</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle size={28} />
-            <p>Farmer has submitted growth data</p>
-            <span>Data is locked and cannot be viewed</span>
-          </>
-        )}
-      </div>
+            {/* STATUS BOX */}
+            <div className={styles["vhc-waiting-box"]}>
+              {!farmerSubmitted[3] ? (
+                <>
+                  <Camera size={28} />
+                  <p>Waiting for farmer to upload health assessment data</p>
+                  <span>No submission received yet</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={28} />
+                  <p>Farmer has submitted health assessment data</p>
+                  <span>Data is locked and cannot be viewed</span>
+                </>
+              )}
+            </div>
 
-      {/* ACTION */}
-      <div className={styles["vhc-create-batch-section"]}>
-        <button
-          className={styles["vhc-create-batch-btn"]}
-          disabled={stage2Form.growthPhotos.length === 0}
-          onClick={() => markStageDone(2)}
-        >
-          <CheckCircle size={20} />
-          Approve Growth Monitoring
-        </button>
+            {/* ACTION */}
+            <div className={styles["vhc-create-batch-section"]}>
+              <button
+                className={styles["vhc-create-batch-btn"]}
+                disabled={isBatchLocked || !stage5Form.batchId || !farmerSubmitted[3]}
+                onClick={() => approveStage(3)}
+              >
+                <CheckCircle size={20} />
+                Approve Health Assessment
+              </button>
 
-        {stage2Form.growthPhotos.length === 0 && (
-          <p className={styles["vhc-verification-note"]}>
-            Approval enabled only after farmer submission
-          </p>
-        )}
-      </div>
-    </div>
-  );
+              {!farmerSubmitted[3] && (
+                <p className={styles["vhc-verification-note"]}>
+                  Approval enabled only after farmer submission
+                </p>
+              )}
+            </div>
+          </div>
+        );
 
 
       case 4:
-  return (
-    <div className={styles["vhc-stage-content"]}>
-      <h3 className={styles["vhc-stage-title"]}>
-        Stage 3: Growth Monitoring
-      </h3>
+        return (
+          <div className={styles["vhc-stage-content"]}>
+            <h3 className={styles["vhc-stage-title"]}>
+              Stage 4: Pre-Harvest Assessment
+            </h3>
 
-      {/* STATUS BOX */}
-      <div className={styles["vhc-waiting-box"]}>
-        {stage2Form.growthPhotos.length === 0 ? (
-          <>
-            <Camera size={28} />
-            <p>Waiting for farmer to upload growth data</p>
-            <span>No submission received yet</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle size={28} />
-            <p>Farmer has submitted growth data</p>
-            <span>Data is locked and cannot be viewed</span>
-          </>
-        )}
-      </div>
+            {/* STATUS BOX */}
+            <div className={styles["vhc-waiting-box"]}>
+              {!farmerSubmitted[4] ? (
+                <>
+                  <Camera size={28} />
+                  <p>Waiting for farmer to upload pre-harvest assessment data</p>
+                  <span>No submission received yet</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={28} />
+                  <p>Farmer has submitted pre-harvest assessment data</p>
+                  <span>Data is locked and cannot be viewed</span>
+                </>
+              )}
+            </div>
 
-      {/* ACTION */}
-      <div className={styles["vhc-create-batch-section"]}>
-        <button
-          className={styles["vhc-create-batch-btn"]}
-          disabled={stage2Form.growthPhotos.length === 0}
-          onClick={() => markStageDone(2)}
-        >
-          <CheckCircle size={20} />
-          Approve Growth Monitoring
-        </button>
+            {/* ACTION */}
+            <div className={styles["vhc-create-batch-section"]}>
+              <button
+                className={styles["vhc-create-batch-btn"]}
+                disabled={isBatchLocked || !stage5Form.batchId || !farmerSubmitted[4]}
+                onClick={() => approveStage(4)}
+              >
+                <CheckCircle size={20} />
+                Approve Pre-Harvest Check
+              </button>
 
-        {stage2Form.growthPhotos.length === 0 && (
-          <p className={styles["vhc-verification-note"]}>
-            Approval enabled only after farmer submission
-          </p>
-        )}
-      </div>
-    </div>
-  );
+              {!farmerSubmitted[4] && (
+                <p className={styles["vhc-verification-note"]}>
+                  Approval enabled only after farmer submission
+                </p>
+              )}
+            </div>
+          </div>
+        );
 
 
       case 5:
@@ -885,6 +1320,7 @@ case 2:
                   type="date"
                   value={stage5Form.finalHarvestDate}
                   onChange={(e) => updateStage5Form("finalHarvestDate", e.target.value)}
+                  disabled={isBatchLocked}
                 />
               </div>
 
@@ -900,6 +1336,7 @@ case 2:
                   step="0.1"
                   placeholder="Enter actual harvested quantity"
                   onChange={(e) => updateStage5Form("finalQuantity", e.target.value)}
+                  disabled={isBatchLocked}
                 />
               </div>
 
@@ -911,6 +1348,7 @@ case 2:
                       type="checkbox"
                       checked={stage5Form.sampleCollected}
                       onChange={(e) => updateStage5Form("sampleCollected", e.target.checked)}
+                      disabled={isBatchLocked}
                       className={styles["vhc-checkbox"]}
                     />
                     <span>Lab sample collected</span>
@@ -933,6 +1371,7 @@ case 2:
                     type="button"
                     className={`${styles["vhc-btn"]} ${styles["vhc-btn-secondary"]}`}
                     onClick={handleStage5GPS}
+                    disabled={isBatchLocked}
                   >
                     <MapPin size={16} /> Capture GPS
                   </button>
@@ -944,7 +1383,8 @@ case 2:
                 <div className={styles["vhc-photo-upload"]}>
                   {stage5Form.finalPhoto ? (
                     <div className={styles["vhc-photo-preview"]}>
-                      <img src={URL.createObjectURL(stage5Form.finalPhoto)} alt="Final harvest preview" />
+                      <img src={stage5PhotoURLRef.current} />
+
                       <button
                         className={styles["vhc-remove-photo"]}
                         onClick={() => updateStage5Form("finalPhoto", null)}
@@ -959,14 +1399,36 @@ case 2:
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handlePhotoUpload(5, e.target.files[0])}
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handlePhotoUpload(5, e.target.files[0]);
+                          }
+                        }}
+
                         hidden
                       />
                     </label>
                   )}
                 </div>
                 <div className={styles["verify"]}>
-                  <button onClick={() => alert('Herb Verified Successfully!')}>Verify</button>
+                  {/* 3️⃣ UPDATED VERIFY BUTTON */}
+                  <button
+                    onClick={verifyLeafWithML}
+                    disabled={verifying || isLeafVerified || isBatchLocked}
+                  >
+
+                    {verifying ? "Verifying..." : "Verify Herb"}
+                  </button>
+
+                  {/* 4️⃣ VISUAL CONFIRMATION */}
+                  {mlResult && (
+                    <div style={{ marginTop: "10px", fontSize: "14px" }}>
+                      <strong>ML Result:</strong><br />
+                      Predicted: {mlResult.predicted_species}<br />
+                      Expected: {mlResult.expected_species}<br />
+                      Status: {mlResult.match ? "✅ Match" : "❌ Mismatch"}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -978,6 +1440,7 @@ case 2:
                       type="checkbox"
                       checked={stage5Form.dispatchAuth}
                       onChange={(e) => updateStage5Form("dispatchAuth", e.target.checked)}
+                      disabled={isBatchLocked}
                       className={styles["vhc-checkbox"]}
                     />
                     <span>Authorize dispatch</span>
@@ -989,8 +1452,15 @@ case 2:
             <div className={styles["vhc-final-verification"]}>
               <button
                 className={styles["vhc-create-batch-btn"]}
-                onClick={() => markStageDone(5)}
-                disabled={!stage5Form.finalHarvestDate || !stage5Form.finalQuantity}
+                onClick={submitStage5}
+                disabled={
+                  isBatchLocked ||
+                  !stage5Form.finalHarvestDate ||
+                  !stage5Form.finalQuantity ||
+                  !stage5Form.finalGeotag ||
+                  !stage5Form.finalPhoto ||
+                  !isLeafVerified
+                }
               >
                 <CheckCircle size={20} /> Complete Final Verification
               </button>
@@ -1013,6 +1483,17 @@ case 2:
         );
     }
   };
+
+  // \u2705 Loading UI while fetching user & batch data
+  if (loading) {
+    return (
+      <div className={styles["vhc-container"]}>
+        <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.2rem" }}>
+          <div>\ud83d\udd04 Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -1045,8 +1526,8 @@ case 2:
 
               <div className={styles["vhc-batch-id-display"]}>
                 <div className={styles["vhc-batch-id-label"]}>Batch ID</div>
-                <div className={styles["vhc-batch-id-value"]}>{batchIdFromAdmin}</div>
-                <div className={styles["vhc-batch-id-note"]}>(Received from Admin System)</div>
+                <div className={styles["vhc-batch-id-value"]}>{activeBatch?.batch_id || "Loading..."}</div>
+                <div className={styles["vhc-batch-id-note"]}>(From Backend System)</div>
               </div>
 
               <div className={styles["vhc-batch-details"]}>
@@ -1086,7 +1567,16 @@ case 2:
               <button
                 className={`${styles["vhc-dialog-btn"]} ${styles["vhc-dialog-btn-confirm"]}`}
                 onClick={confirmCreateBatch}
-                disabled={!stage1Form.farmerName || !stage1Form.fid || !stage1Form.species}
+                disabled={
+                  isBatchLocked ||
+                  !stage1Form.farmPhoto ||
+                  !stage1Form.farmerName ||
+                  !stage1Form.fid ||
+                  !stage1Form.species ||
+                  !stage1Form.visitDate ||
+                  !stage1Form.geotag ||
+                  !stage1Form.estimatedQty
+                }
               >
                 <CheckCircle size={18} />
                 Proceed to Stage 2
@@ -1134,14 +1624,14 @@ case 2:
 
                 <div className={styles["vhc-notification-tabs"]}>
                   <button
-                    className={`${styles["vhc-notification-tab"]} ${activeTab === 'admin' ? styles['active'] : ''}`}
-                    onClick={() => setActiveTab('admin')}
+                    className={`${styles["vhc-notification-tab"]} ${activeNotificationTab === 'admin' ? styles['active'] : ''}`}
+                    onClick={() => setActiveNotificationTab('admin')}
                   >
                     Admin
                   </button>
                   <button
-                    className={`${styles["vhc-notification-tab"]} ${activeTab === 'tester' ? styles['active'] : ''}`}
-                    onClick={() => setActiveTab('tester')}
+                    className={`${styles["vhc-notification-tab"]} ${activeNotificationTab === 'tester' ? styles['active'] : ''}`}
+                    onClick={() => setActiveNotificationTab('tester')}
                   >
                     Tester
                   </button>
@@ -1149,14 +1639,23 @@ case 2:
 
                 <div className={styles["vhc-notification-list"]}>
                   {notifications
-                    .filter(n => activeTab === 'all' || n.type === activeTab)
+                    .filter(n =>
+                      activeNotificationTab === "admin"
+                        ? ["admin", "system"].includes(n.category)
+                        : ["tester"].includes(n.category)
+                    )
                     .map(notification => (
                       <div
-                        key={notification.id}
                         className={`${styles["vhc-notification-item"]} ${!notification.read ? styles['unread'] : ''}`}
+                        onClick={() => {
+                          if (!notification.read) {
+                            handleMarkNotificationRead(notification.id);
+                          }
+                        }}
                       >
+
                         <div className={styles["vhc-notification-icon"]}>
-                          {getNotificationIcon(notification.type)}
+                          {getNotificationIcon(notification.category)}
                         </div>
                         <div className={styles["vhc-notification-content"]}>
                           <div className={styles["vhc-notification-title"]}>
@@ -1166,12 +1665,17 @@ case 2:
                             {notification.message}
                           </div>
                           <div className={styles["vhc-notification-time"]}>
-                            {notification.time}
+                            {notification.createdAt
+                              ? new Date(notification.createdAt).toLocaleString()
+                              : "—"}
                           </div>
                         </div>
                         <button
                           className={styles["vhc-mark-read-btn"]}
-                          onClick={() => handleMarkNotificationRead(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkNotificationRead(notification.id);
+                          }}
                         >
                           Mark Read
                         </button>
@@ -1196,16 +1700,19 @@ case 2:
               <div className={styles["vhc-profile-dropdown"]}>
                 <div className={styles["vhc-profile-header"]}>
                   <div className={styles["vhc-profile-details"]}>
-                    <h4>Collector7421</h4>
-                    <p>Senior Field Officer</p>
+                    <h4>{user?.fullName || user?.name || "Collector"}</h4>
+                    <p>{user?.role || "Collector"}</p>
                     <div className={styles["vhc-profile-badges"]}>
-                      <span className={styles["vhc-profile-badge"]}>ID: COL-7421</span>
+                      <span className={styles["vhc-profile-badge"]}>ID: {user?.id || "N/A"}</span>
                       <span className={`${styles["vhc-profile-badge"]} ${styles["active"]}`}>Active</span>
                     </div>
                   </div>
                 </div>
 
                 <div className={styles["vhc-profile-stats"]}>
+                  <div className={styles["vhc-profile-note"]}>
+                    Demo Data
+                  </div>
                   <div className={styles["vhc-stat-item"]}>
                     <div>
                       <div className={styles["vhc-stat-label"]}>Batches Today</div>
@@ -1236,7 +1743,7 @@ case 2:
                   className={styles["vhc-logout-btn"]}
                   onClick={handleLogout}
                 >
-                 Log Out
+                  Log Out
                 </button>
               </div>
             )}
@@ -1524,75 +2031,21 @@ case 2:
                     </div>
                   </div>
                 ) : (
-                  <div className={styles["vhc-preview-grid"]}>
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>Herb Name</div>
-                      <div className={styles["vhc-preview-value"]}>
-                        {form.herb || <span className={styles["vhc-preview-empty"]}>Not selected</span>}
-                      </div>
+                  <div className={styles["vhc-preview-status"]}>
+                    <div className={styles["vhc-preview-status-icon"]}>
+                      {getStageStatus(currentStage) === "done" ? "✅" :
+                        getStageStatus(currentStage) === "current" ? "🔄" : "⏳"}
                     </div>
-
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>Harvest Date</div>
-                      <div className={styles["vhc-preview-value"]}>
-                        {form.date ? new Date(form.date).toLocaleDateString('en-GB') :
-                          <span className={styles["vhc-preview-empty"]}>Not set</span>}
+                    <div className={styles["vhc-preview-status-text"]}>
+                      <div className={styles["vhc-preview-status-title"]}>
+                        Stage {currentStage}: {STAGE_DATA[currentStage - 1]?.title}
                       </div>
-                    </div>
-
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>Quality Grade</div>
-                      <div className={styles["vhc-preview-value"]}>
-                        {form.quality || <span className={styles["vhc-preview-empty"]}>Not graded</span>}
-                      </div>
-                    </div>
-
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>Quantity</div>
-                      <div className={styles["vhc-preview-value"]}>
-                        {form.qty ? `${form.qty} kg` : <span className={styles["vhc-preview-empty"]}>Not specified</span>}
-                      </div>
-                    </div>
-
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>Weather</div>
-                      <div className={styles["vhc-preview-value"]}>
-                        {form.weather || <span className={styles["vhc-preview-empty"]}>Not recorded</span>}
-                      </div>
-                    </div>
-
-                    <div className={styles["vhc-preview-item"]}>
-                      <div className={styles["vhc-preview-label"]}>GPS Location</div>
-                      <div className={`${styles["vhc-preview-value"]} ${styles["vhc-preview-gps"]}`}>
-                        {form.gps === "Not captured" ?
-                          <span className={styles["vhc-preview-empty"]}>Not captured</span> :
-                          form.gps}
-                      </div>
-                    </div>
-
-                    <div className={styles["vhc-preview-notes"]}>
-                      <div className={styles["vhc-notes-label"]}>Collector Notes</div>
-                      <div className={styles["vhc-notes-content"]}>
-                        {form.notes || <span className={styles["vhc-preview-empty"]}>No notes added</span>}
+                      <div className={styles["vhc-preview-status-subtitle"]}>
+                        Status: {getStatusText(getStageStatus(currentStage))}
                       </div>
                     </div>
                   </div>
                 )}
-
-                <div className={styles["vhc-preview-status"]}>
-                  <div className={styles["vhc-preview-status-icon"]}>
-                    {stageStatus[currentStage - 1] === "done" ? "✅" :
-                      stageStatus[currentStage - 1] === "current" ? "🔄" : "⏳"}
-                  </div>
-                  <div className={styles["vhc-preview-status-text"]}>
-                    <div className={styles["vhc-preview-status-title"]}>
-                      Stage {currentStage}: {STAGE_DATA[currentStage - 1]?.title}
-                    </div>
-                    <div className={styles["vhc-preview-status-subtitle"]}>
-                      Status: {getStatusText(stageStatus[currentStage - 1])}
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </aside>

@@ -1,98 +1,234 @@
-import React, { useState, useEffect, useRef, Fragment } from 'react';
-import '../styles/Admin.css';
+import React, { useState, useEffect, useRef, Fragment } from "react";
+import adminApi from "../api/adminApi";
+import "../styles/Admin.css";
 
+/* =========================
+   HELPERS
+========================= */
+const getBatchId = (batch) => batch?.batch_id || batch?.id || "";
+const isSuperAdmin =
+  localStorage.getItem("role") === "superadmin";
+
+/* =========================
+   COMPONENT
+========================= */
 const Admin = () => {
-  // State management
-  const [activeTab, setActiveTab] = useState('dashboard');
+
+  /* =========================
+   CORE STATE
+========================= */
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [activeSubTab, setActiveSubTab] = useState({
-    users: 'create-user',
-    batches: 'stage-tracking',
-    analytics: 'consumer-analytics'
+    users: "create-user",
+    batches: "stage-tracking",
+    analytics: "consumer-analytics",
   });
+
+
   const [modalOpen, setModalOpen] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [mintBatch, setMintBatch] = useState(null);
 
-  // Chart references
-  const batchChartRef = useRef(null);
-  const analyticsChartRef = useRef(null);
+  const [batches, setBatches] = useState([]);
+  const [collectors, setCollectors] = useState([]);
+  const [testers, setTesters] = useState([]);
+  const [manufacturers, setManufacturers] = useState([]);
+  const [manufacturerQuotes, setManufacturerQuotes] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const LABEL_MODE = "SIMULATION";
+  const [selectedBatchId, setSelectedBatchId] = useState(null);
+  const [selectedCollectorId, setSelectedCollectorId] = useState(null);
+  const [visitDate, setVisitDate] = useState("");
+  const [labelType, setLabelType] = useState("standard");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [kpis, setKpis] = useState({
+    activeFarmers: 0,
+    batchesInProgress: 0,
+    pendingTesterAssignments: 0,
+    pendingManufacturerQuotes: 0,
+    completedBatches: 0,
+    blockchainTransactions: 0,
+    delayedStages: 0,
+    complianceViolations: 0,
+  });
   const [chartsInitialized, setChartsInitialized] = useState(false);
+  const batchChartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+  const STATUS_TO_STAGE = {
+    planting: 1,
+    growing_stage_1: 2,
+    growing_stage_2: 3,
+    growing_stage_3: 4,
+    harvest_completed: 5,
+    verify: 5,
+    testing_assigned: 6,
+    testing_in_progress: 6,
+    bidding_open: 7,
+    manufacturing_assigned: 7,
+    manufacturing_done: 7,
+    packaged: 7,
+    blockchain_anchored: 7,
+  };
 
-  // Stable data - no fluctuations
-  const [notifications] = useState([
-    { id: 1, title: 'New herb planting request', details: 'from Farmer Rajesh (ID: F-1245)', time: '2 minutes ago', type: 'info' },
-    { id: 2, title: 'Tester accepted batch first', details: 'for Batch ID: HB-2023-08-124', time: '15 minutes ago', type: 'success' },
-    { id: 3, title: 'Manufacturer quote received', details: 'from AyurPharma for Batch HB-2023-08-119', time: '1 hour ago', type: 'info' },
-    { id: 4, title: 'Blockchain mint successful', details: 'for Token ID: 12478 (Batch HB-2023-08-115)', time: '3 hours ago', type: 'success' },
-    { id: 5, title: 'Farmer delayed Stage 3', details: 'for Batch ID: HB-2023-08-121 (Ashwagandha)', time: '5 hours ago', type: 'warning' },
-  ]);
+  const normalizeBatch = (batch) => {
+    const stage = STATUS_TO_STAGE[batch.status] || 1;
 
-  const [kpis] = useState({
-    activeFarmers: 1247,
-    batchesInProgress: 84,
-    pendingTesterAssignments: 17,
-    pendingManufacturerQuotes: 23,
-    completedBatches: 892,
-    blockchainTransactions: 5241,
-    delayedStages: 12,
-    complianceViolations: 4,
+    return {
+      ...batch,
+
+      // 🔑 HARD REQUIREMENTS FOR UI
+      stage,
+      completeness: Math.round((stage / 7) * 100),
+
+      // Optional but stabilizes tables
+      herb: batch.herb_name,
+      timeline: batch.timeline ? Object.keys(batch.timeline).join(" → ") : "N/A",
+    };
+  };
+  const normalizeQuote = (q) => ({
+    quoteId: q.id,
+    manufacturerId: q.manufacturer_id,
+    batchId: q.batch_id,
+    manufacturer: q.manufacturer_name,
+    amount: `₹${q.price}`,
+    time: q.processing_time || "N/A",
+    score: q.quality_score ?? "—",
+    submitted: q.submitted_at,
+    status: q.status || "pending",
   });
 
-  const [batches] = useState([
-    { id: 'HB-2023-08-124', herb: 'Ashwagandha', farmer: 'Rajesh Kumar', collector: 'Anand Kumar', 
-      tester: 'HerbCheck Labs', manufacturer: 'Pending', stage: 3, completeness: 40, 
-      timeline: 'On track', status: 'inprogress', delay: 0 },
-    { id: 'HB-2023-08-123', herb: 'Tulsi', farmer: 'Suresh Patel', collector: 'Anand Kumar', 
-      tester: 'AyurTest Labs', manufacturer: 'Pending', stage: 5, completeness: 80, 
-      timeline: 'Delayed 2d', status: 'pending', delay: 2 },
-    { id: 'HB-2023-08-122', herb: 'Giloy', farmer: 'Mohan Singh', collector: 'Ravi Shankar', 
-      tester: 'HerbCheck Labs', manufacturer: 'Pending', stage: 2, completeness: 20, 
-      timeline: 'On track', status: 'inprogress', delay: 0 },
-    { id: 'HB-2023-08-121', herb: 'Turmeric', farmer: 'Amit Sharma', collector: 'Sanjay Patel', 
-      tester: 'AyurTest Labs', manufacturer: 'AyurPharma Ltd.', stage: 6, completeness: 100, 
-      timeline: 'Manufacturing', status: 'inprogress', delay: 0 },
-    { id: 'HB-2023-08-120', herb: 'Neem', farmer: 'Vijay Kumar', collector: 'Ravi Shankar', 
-      tester: 'HerbCheck Labs', manufacturer: 'Nature\'s Way', stage: 7, completeness: 100, 
-      timeline: 'Completed', status: 'completed', delay: 0 },
-  ]);
+  /* =========================
+   AUTH GUARD
+========================= */
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      window.location.href = "/login";
+    }
+  }, []);
 
-  const [collectors] = useState([
-    { id: 'C-101', name: 'Anand Kumar', region: 'North India', phone: '+91 9876543210', 
-      email: 'anand@virtuherbchain.com', assignedBatches: 24, completed: 22, 
-      avgTime: '2.1 hrs', accuracy: '99%', status: 'active', rating: 4.8 },
-    { id: 'C-102', name: 'Ravi Shankar', region: 'South India', phone: '+91 9876543211', 
-      email: 'ravi@virtuherbchain.com', assignedBatches: 18, completed: 16, 
-      avgTime: '2.8 hrs', accuracy: '97%', status: 'active', rating: 4.5 },
-    { id: 'C-103', name: 'Sanjay Patel', region: 'West India', phone: '+91 9876543212', 
-      email: 'sanjay@virtuherbchain.com', assignedBatches: 15, completed: 12, 
-      avgTime: '3.2 hrs', accuracy: '95%', status: 'delayed', rating: 4.2 },
-  ]);
+  /* =========================
+     DATA LOAD
+  ========================= */
+  const fetchAllAdminData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const [testers] = useState([
-    { id: 'T-101', name: 'HerbCheck Labs', location: 'Delhi', accreditation: 'NABL Certified', 
-      turnaround: '36 hrs', accuracy: '99.1%', acceptanceRate: '92%', rating: 4.8, status: 'active' },
-    { id: 'T-102', name: 'AyurTest Labs', location: 'Bangalore', accreditation: 'ISO 17025', 
-      turnaround: '42 hrs', accuracy: '98.7%', acceptanceRate: '88%', rating: 4.6, status: 'active' },
-    { id: 'T-103', name: 'Vedic Quality Labs', location: 'Mumbai', accreditation: 'FSSAI Approved', 
-      turnaround: '48 hrs', accuracy: '97.5%', acceptanceRate: '85%', rating: 4.3, status: 'active' },
-  ]);
+      const [
+        batchesRes,
+        collectorsRes,
+        testersRes,
+        manufacturersRes,
+      ] = await Promise.all([
+        adminApi.get("/admin/dashboard"),
+        adminApi.get("/admin/collectors"),
+        adminApi.get("/admin/testers"),
+        adminApi.get("/admin/manufacturers"),
+      ]);
 
-  const [manufacturers] = useState([
-    { id: 'M-101', name: 'AyurPharma Ltd.', location: 'Gujarat', license: 'GMP Certified', 
-      capacity: '5000 kg/month', successRate: '94%', avgProcessing: '5.2 days', rating: 4.7, status: 'active' },
-    { id: 'M-102', name: 'HerbCare Solutions', location: 'Maharashtra', license: 'USFDA Approved', 
-      capacity: '3000 kg/month', successRate: '91%', avgProcessing: '6.1 days', rating: 4.5, status: 'active' },
-    { id: 'M-103', name: 'Nature\'s Way', location: 'Kerala', license: 'Organic Certified', 
-      capacity: '2000 kg/month', successRate: '96%', avgProcessing: '4.8 days', rating: 4.9, status: 'active' },
-  ]);
+      const rawBatches = batchesRes.data?.batches || batchesRes.data || [];
+      setBatches(rawBatches.map(normalizeBatch));
 
-  const [manufacturerQuotes] = useState([
-    { id: 'Q-001', batchId: 'HB-2023-08-119', manufacturer: 'AyurPharma Ltd.', amount: '₹124,500', 
-      time: '5 days', score: '94/100', status: 'pending', submitted: '2023-08-15' },
-    { id: 'Q-002', batchId: 'HB-2023-08-119', manufacturer: 'HerbCare Solutions', amount: '₹118,200', 
-      time: '6 days', score: '91/100', status: 'pending', submitted: '2023-08-15' },
-    { id: 'Q-003', batchId: 'HB-2023-08-118', manufacturer: 'Nature\'s Way', amount: '₹135,800', 
-      time: '4 days', score: '96/100', status: 'selected', submitted: '2023-08-14' },
-  ]);
+      setCollectors(collectorsRes.data || []);
+      setTesters(testersRes.data || []);
+      setManufacturers(manufacturersRes.data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load admin data");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const markAllNotificationsRead = async () => {
+    try {
+      await adminApi.put("/notifications/read-all");
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, read: true }))
+      );
+    } catch (err) {
+      console.error("Failed to mark all notifications read", err);
+    }
+  };
+
+  const viewAllNotifications = () => {
+    setShowNotifications(false);
+    openModal("allNotificationsModal");
+  };
+
+  useEffect(() => {
+    fetchAllAdminData();
+  }, []);
+  /* =========================
+   ACTIONS
+========================= */
+  const assignCollector = async () => {
+    try {
+      const selectedCollector = collectors.find(c => c.id === selectedCollectorId);
+
+      if (!selectedCollector || !selectedBatchId) {
+        alert("Select batch and collector");
+        return;
+      }
+
+      await adminApi.put(`/admin/assign-collector/${selectedBatchId}`, {
+        id: selectedCollector.id,
+        name: selectedCollector.name,
+        visit_date: visitDate
+      });
+
+      alert("Collector assigned");
+      closeModal();
+      await fetchBatches();
+    } catch (err) {
+      console.error(err);
+      alert("Assignment failed");
+    }
+  };
+
+  const publishTesterRequest = async () => {
+    const batch = batches.find(b => getBatchId(b) === selectedBatchId);
+    if (!batch) {
+      alert("Invalid batch selected");
+      return;
+    }
+    
+    if (!["verify", "harvest_completed"].includes(batch.status)) {
+      alert("Batch must be in verify or harvest completed state");
+      return;
+    }
+
+
+    try {
+      await adminApi.post("/admin/publish-tester-request", {
+        batch_id: selectedBatchId,
+      });
+
+      alert("Tester request published. First tester wins.");
+      await fetchBatches();
+
+      /* 🔥 FIX ISSUE 3 */
+      setSelectedBatchId(null);   // reset previous selection
+      closeModal();
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to publish tester request");
+    }
+  };
+
+
+  const fetchQuotes = async (batchId) => {
+    try {
+      const res = await adminApi.get(`/admin/quotes/${batchId}`);
+      setManufacturerQuotes((res.data || []).map(normalizeQuote));
+    } catch {
+      setManufacturerQuotes([]);
+    }
+  };
+
 
   const [geoFencingData] = useState({
     allowedZones: ['North India', 'South India', 'East India', 'West India'],
@@ -168,62 +304,85 @@ const Admin = () => {
       ipfsGateway: 'https://ipfs.io/ipfs'
     }
   });
+  const fetchNotifications = async () => {
+    try {
+      const res = await adminApi.get("/notifications"); // ✅ FIX
+      setNotifications(
+        (res.data || []).map(n => ({ ...n, id: n.id || n._id }))
+      );
+
+    } catch {
+      setNotifications([]);
+    }
+  };
+  useEffect(() => {
+    if (selectedBatchId) {
+      fetchQuotes(selectedBatchId);
+    }
+  }, [selectedBatchId]);
+
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+
+  // Helper function to fetch batches only
+  const fetchBatches = async () => {
+    try {
+      const res = await adminApi.get("/admin/dashboard");
+      const raw = res.data?.batches || res.data || [];
+      setBatches(raw.map(normalizeBatch));
+    } catch (err) {
+      console.error("Batch fetch failed", err);
+    }
+  };
+
+
+
+
+
 
   // Initialize charts
   useEffect(() => {
-    const initializeCharts = async () => {
-      try {
-        const { Chart } = await import('chart.js/auto');
-        
-        // Batch Completion Chart
-        if (batchChartRef.current) {
-          const ctx = batchChartRef.current.getContext('2d');
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-              datasets: [{
-                label: 'Batches Completed',
-                data: [65, 78, 90, 85, 92, 88, 95, 124],
-                borderColor: '#2e7d32',
-                backgroundColor: 'rgba(46, 125, 50, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-              }, {
-                label: 'Batches in Progress',
-                data: [45, 52, 60, 55, 70, 68, 75, 84],
-                borderColor: '#ffb300',
-                backgroundColor: 'rgba(255, 179, 0, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'top' } },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  title: { display: true, text: 'Number of Batches' }
-                }
-              }
-            }
-          });
-        }
-
-        setChartsInitialized(true);
-      } catch (error) {
-        console.error('Chart.js initialization error:', error);
-      }
-    };
-
     if (!chartsInitialized) {
-      initializeCharts();
+      (async () => {
+        try {
+          const { Chart } = await import('chart.js/auto');
+
+          if (batchChartRef.current) {
+            const ctx = batchChartRef.current.getContext('2d');
+
+            if (chartInstanceRef.current) {
+              chartInstanceRef.current.destroy();
+            }
+
+            chartInstanceRef.current = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+                datasets: [
+                  {
+                    label: 'Batches Completed',
+                    data: [65, 78, 90, 85, 92, 88, 95, 124],
+                    borderColor: '#2e7d32',
+                    fill: true,
+                    tension: 0.4
+                  }
+                ]
+              },
+              options: { responsive: true }
+            });
+          }
+
+          setChartsInitialized(true);
+        } catch (e) {
+          console.error(e);
+        }
+      })();
     }
   }, [chartsInitialized]);
+
 
   // Navigation
   const navItems = [
@@ -261,34 +420,84 @@ const Admin = () => {
     setModalOpen(null);
   };
 
-  // Action functions
-  const generateLabel = () => {
-    alert('Label generation initiated! ProductID: PRD-2023-08-119-01\nLabelID will be generated and QR code created.');
-    closeModal();
+  // Notification handler
+  const markNotificationReadLocal = async (notificationId) => {
+    try {
+      await adminApi.put(`/notifications/${notificationId}/read`);
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (e) {
+      console.error("Failed to mark notification read", e);
+    }
   };
 
-  const mintNFT = () => {
+
+
+
+  // TODO: Add backend call when endpoint is ready
+  // await adminApi.post(`/admin/notifications/${notificationId}/read`);
+
+  // Action functions
+  const generateLabel = async () => {
+    // ❌ ISSUE: Backend endpoint /admin/generate-label does NOT exist yet
+    // TODO: Add backend endpoint or remove this feature
+    try {
+      // Temporarily disabled until backend endpoint is created
+      // await adminApi.post("/admin/generate-label", {
+      //   batchId: selectedBatchId,
+      //   labelType,
+      // });
+
+      // Mock success for now
+      console.warn("generateLabel: Backend endpoint not implemented yet");
+      await fetchBatches();
+      alert("Label generation requested (backend pending)");
+      closeModal();
+    } catch (err) {
+      console.error("Label generation failed:", err);
+      alert("Label generation failed");
+    }
+  };
+
+
+  const mintNFT = (batch) => {
+    if (!batch) {
+      alert("Please select a batch first");
+      return;
+    }
+    setMintBatch(batch);
     openModal('mintNFTModal');
   };
+
 
   const confirmMint = () => {
     alert('NFT minting transaction submitted to Polygon network!\nTransaction hash: 0x5b2...9e1a\nTokenID: #12479');
     closeModal();
   };
 
-  const assignCollector = () => {
-    alert('Collector assigned successfully!');
-    closeModal();
+  const selectManufacturer = async (quoteId) => {
+    try {
+      const quote = manufacturerQuotes.find(q => q.quoteId === quoteId);
+      if (!quote) {
+        alert("Quote not found");
+        return;
+      }
+
+      // TODO: Update when backend endpoint is finalized
+      await adminApi.post("/admin/select-manufacturer", {
+        batch_id: quote.batchId,
+        manufacturer_id: quote.manufacturerId,
+      });
+
+      await fetchBatches();
+      alert("Manufacturer selected");
+    } catch (err) {
+      console.error("Manufacturer selection failed:", err);
+      alert("Selection failed");
+    }
   };
 
-  const assignTester = () => {
-    alert('Tester assigned successfully!');
-    closeModal();
-  };
-
-  const selectManufacturer = (quoteId) => {
-    alert(`Manufacturer selected for quote ${quoteId}`);
-  };
 
   // Status badge component
   const StatusBadge = ({ status }) => {
@@ -301,9 +510,30 @@ const Admin = () => {
       'selected': { class: 'status-completed', label: 'Selected' }
     };
 
+
     const config = statusConfig[status] || { class: '', label: status };
     return <span className={`status ${config.class}`}>{config.label}</span>;
   };
+  useEffect(() => {
+    setKpis(prev => ({
+      ...prev,
+      batchesInProgress: batches.filter(b => b.stage < 7).length,
+      completedBatches: batches.filter(b => b.stage === 7).length,
+      pendingTesterAssignments: batches.filter(
+        b => ["verify", "harvest_completed"].includes(b.status)
+      ).length,
+
+      pendingManufacturerQuotes: manufacturerQuotes.filter(q => q.status === "pending").length,
+
+    }));
+  }, [batches, manufacturerQuotes]);
+  useEffect(() => {
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
+    };
+  }, []);
 
   // Progress bar component
   const ProgressBar = ({ percentage, color = '#2e7d32' }) => (
@@ -315,7 +545,7 @@ const Admin = () => {
   // Quick actions
   const quickActions = [
     { id: 'assignCollector', icon: 'fa-user-plus', label: 'Assign Collector', modal: 'assignCollectorModal' },
-    { id: 'assignTester', icon: 'fa-flask', label: 'Assign Tester', modal: 'assignTesterModal' },
+
     { id: 'reviewQuotes', icon: 'fa-file-signature', label: 'Review Manufacturer Quotes', modal: 'reviewQuotesModal' },
     { id: 'generateLabel', icon: 'fa-qrcode', label: 'Generate LabelID', modal: 'generateLabelModal' },
     { id: 'reschedule', icon: 'fa-calendar-alt', label: 'Reschedule Collector Visit', modal: 'rescheduleModal' },
@@ -373,7 +603,7 @@ const Admin = () => {
             <canvas ref={batchChartRef}></canvas>
           </div>
         </div>
-        
+
         <div className="notifications-container">
           <h3 className="section-title"><i className="fas fa-bell"></i> Recent Activity</h3>
           <div className="activity-list">
@@ -424,22 +654,28 @@ const Admin = () => {
             </tr>
           </thead>
           <tbody>
-            {batches.map(batch => (
-              <tr key={batch.id}>
-                <td>{batch.id}</td>
-                <td>{batch.herb}</td>
-                <td>Stage {batch.stage}/7</td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '60px' }}>{batch.completeness}%</div>
-                    <ProgressBar percentage={batch.completeness} />
-                  </div>
-                </td>
-                <td>{batch.timeline}</td>
-                <td><StatusBadge status={batch.status} /></td>
-                <td><button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.9rem' }}>View</button></td>
-              </tr>
-            ))}
+            {batches.map(batch => {
+              // 🔴 FIX: Defensive handling for undefined fields
+              const completeness = batch.completeness ?? Math.round((batch.stage / 7) * 100);
+              const timeline = batch.timeline || "N/A";
+
+              return (
+                <tr key={getBatchId(batch)}>
+                  <td>{getBatchId(batch)}</td>
+                  <td>{batch.herb || batch.herb_name}</td>
+                  <td>Stage {batch.stage}/7</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '60px' }}>{completeness}%</div>
+                      <ProgressBar percentage={completeness} />
+                    </div>
+                  </td>
+                  <td>{timeline}</td>
+                  <td><StatusBadge status={batch.status} /></td>
+                  <td><button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.9rem' }}>View</button></td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -448,15 +684,15 @@ const Admin = () => {
 
   const renderUserManagement = () => {
     const currentSubTab = activeSubTab['users'] || 'create-user';
-    
+
     return (
       <>
         <h2 className="section-title"><i className="fas fa-users"></i> User & Role Management</h2>
-        
+
         <div className="tabs">
           {userSubTabs.map(subTab => (
-            <div 
-              key={subTab} 
+            <div
+              key={subTab}
               className={`tab ${currentSubTab === subTab ? 'active' : ''}`}
               onClick={() => handleSubTabClick(subTab, 'users')}
             >
@@ -464,7 +700,7 @@ const Admin = () => {
             </div>
           ))}
         </div>
-        
+
         {currentSubTab === 'create-user' && (
           <div id="create-user" className="subtab-content active">
             <div className="dashboard-grid">
@@ -478,7 +714,7 @@ const Admin = () => {
                 <div className="card-value">{kpis.activeFarmers.toLocaleString()}</div>
                 <div className="card-change">Click to add new farmer</div>
               </div>
-              
+
               <div className="card" onClick={() => openModal('createCollectorModal')} style={{ cursor: 'pointer' }}>
                 <div className="card-header">
                   <div className="card-title">Create Collector</div>
@@ -489,7 +725,7 @@ const Admin = () => {
                 <div className="card-value">{collectors.length}</div>
                 <div className="card-change">Click to add new collector</div>
               </div>
-              
+
               <div className="card" onClick={() => openModal('createTesterModal')} style={{ cursor: 'pointer' }}>
                 <div className="card-header">
                   <div className="card-title">Create Tester</div>
@@ -500,7 +736,7 @@ const Admin = () => {
                 <div className="card-value">{testers.length}</div>
                 <div className="card-change">Click to add new tester</div>
               </div>
-              
+
               <div className="card" onClick={() => openModal('createManufacturerModal')} style={{ cursor: 'pointer' }}>
                 <div className="card-header">
                   <div className="card-title">Create Manufacturer</div>
@@ -514,7 +750,7 @@ const Admin = () => {
             </div>
           </div>
         )}
-        
+
         {currentSubTab === 'assign-permissions' && (
           <div id="assign-permissions" className="subtab-content">
             <h3 style={{ margin: '20px 0', color: '#1b5e20' }}>Role Permissions Matrix</h3>
@@ -578,7 +814,7 @@ const Admin = () => {
             </div>
           </div>
         )}
-        
+
         {currentSubTab === 'identity-mapping' && (
           <div id="identity-mapping" className="subtab-content">
             <h3 style={{ margin: '20px 0', color: '#1b5e20' }}>Fabric Identity & Wallet Management</h3>
@@ -593,7 +829,7 @@ const Admin = () => {
                 <div className="card-value">1,315 Issued</div>
                 <div className="card-change">X.509 certificates for all participants</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Public Chain Wallets</div>
@@ -604,7 +840,7 @@ const Admin = () => {
                 <div className="card-value">{manufacturers.length}</div>
                 <div className="card-change">Polygon wallet addresses stored</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Internal Role Groups</div>
@@ -624,15 +860,15 @@ const Admin = () => {
 
   const renderBatchManagement = () => {
     const currentSubTab = activeSubTab['batches'] || 'stage-tracking';
-    
+
     return (
       <>
         <h2 className="section-title"><i className="fas fa-boxes"></i> Batch Management System</h2>
-        
+
         <div className="tabs">
           {batchSubTabs.map(subTab => (
-            <div 
-              key={subTab} 
+            <div
+              key={subTab}
               className={`tab ${currentSubTab === subTab ? 'active' : ''}`}
               onClick={() => handleSubTabClick(subTab, 'batches')}
             >
@@ -640,7 +876,7 @@ const Admin = () => {
             </div>
           ))}
         </div>
-        
+
         {currentSubTab === 'stage-tracking' && (
           <div id="stage-tracking" className="subtab-content active">
             <h3 style={{ margin: '20px 0', color: '#1b5e20' }}>Batch Stage Status</h3>
@@ -660,28 +896,34 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {batches.map(batch => (
-                    <tr key={batch.id}>
-                      <td>{batch.id}</td>
-                      <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 1 ? 'green' : 'gray' }}></i></td>
-                      <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 2 ? 'green' : 'gray' }}></i></td>
-                      <td><i className={`fas ${batch.stage >= 3 ? (batch.delay > 0 ? 'fa-exclamation-triangle text-warning' : 'fa-check-circle text-success') : 'fa-clock text-gray'}`}></i></td>
-                      <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 4 ? 'green' : 'gray' }}></i></td>
-                      <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 5 ? 'green' : 'gray' }}></i></td>
-                      <td><i className="fas fa-flask" style={{ color: batch.stage >= 6 ? 'green' : 'gray' }}></i></td>
-                      <td><i className="fas fa-industry" style={{ color: batch.stage >= 7 ? 'green' : 'gray' }}></i></td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ width: '40px' }}>{batch.completeness}%</div>
-                          <ProgressBar percentage={batch.completeness} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {batches.map(batch => {
+                    // 🔴 FIX: Defensive handling for undefined fields
+                    const completeness = batch.completeness ?? Math.round((batch.stage / 7) * 100);
+                    const delay = batch.delay ?? 0;
+
+                    return (
+                      <tr key={getBatchId(batch)}>
+                        <td>{getBatchId(batch)}</td>
+                        <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 1 ? 'green' : 'gray' }}></i></td>
+                        <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 2 ? 'green' : 'gray' }}></i></td>
+                        <td><i className={`fas ${batch.stage >= 3 ? (delay > 0 ? 'fa-exclamation-triangle text-warning' : 'fa-check-circle text-success') : 'fa-clock text-gray'}`}></i></td>
+                        <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 4 ? 'green' : 'gray' }}></i></td>
+                        <td><i className="fas fa-check-circle" style={{ color: batch.stage >= 5 ? 'green' : 'gray' }}></i></td>
+                        <td><i className="fas fa-flask" style={{ color: batch.stage >= 6 ? 'green' : 'gray' }}></i></td>
+                        <td><i className="fas fa-industry" style={{ color: batch.stage >= 7 ? 'green' : 'gray' }}></i></td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '40px' }}>{completeness}%</div>
+                            <ProgressBar percentage={completeness} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            
+
             <div style={{ marginTop: '30px', background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
               <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}>Stage Visualization</h3>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px', background: '#e8f5e9', padding: '0 10px', borderRadius: '8px', marginBottom: '10px' }}>
@@ -713,7 +955,7 @@ const Admin = () => {
           <div className="card-value">{collectors.filter(c => c.status === 'active').length}</div>
           <div className="card-change positive"><i className="fas fa-arrow-up"></i> 5 new this month</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Avg. Assignment Time</div>
@@ -724,7 +966,7 @@ const Admin = () => {
           <div className="card-value">2.4 hrs</div>
           <div className="card-change negative"><i className="fas fa-arrow-up"></i> 0.3 hrs longer</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Missed Visits</div>
@@ -735,7 +977,7 @@ const Admin = () => {
           <div className="card-value">12</div>
           <div className="card-change positive"><i className="fas fa-arrow-down"></i> 3 less than last month</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Stage 1 & 5 Accuracy</div>
@@ -747,7 +989,7 @@ const Admin = () => {
           <div className="card-change positive"><i className="fas fa-arrow-up"></i> High compliance</div>
         </div>
       </div>
-      
+
       <div className="table-container" style={{ marginTop: '30px' }}>
         <h3 style={{ padding: '20px 20px 0 20px', color: '#1b5e20' }}>Collector Performance</h3>
         <table>
@@ -798,7 +1040,7 @@ const Admin = () => {
           <div className="card-value">{kpis.pendingTesterAssignments}</div>
           <div className="card-change">Awaiting results</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Avg. Turnaround Time</div>
@@ -809,7 +1051,7 @@ const Admin = () => {
           <div className="card-value">36 hrs</div>
           <div className="card-change positive"><i className="fas fa-arrow-down"></i> 4 hrs faster</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Test Accuracy</div>
@@ -820,7 +1062,7 @@ const Admin = () => {
           <div className="card-value">99.1%</div>
           <div className="card-change">AI validated</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Blockchain Test Entries</div>
@@ -832,7 +1074,7 @@ const Admin = () => {
           <div className="card-change positive">All confirmed</div>
         </div>
       </div>
-      
+
       <div className="table-container" style={{ marginTop: '30px' }}>
         <h3 style={{ padding: '20px 20px 0 20px', color: '#1b5e20' }}>Testing Labs</h3>
         <table>
@@ -870,7 +1112,7 @@ const Admin = () => {
   const renderManufacturerManagement = () => (
     <>
       <h2 className="section-title"><i className="fas fa-industry"></i> Manufacturer Management</h2>
-      
+
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
@@ -882,7 +1124,7 @@ const Admin = () => {
           <div className="card-value">{kpis.pendingManufacturerQuotes}</div>
           <div className="card-change">Awaiting review</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Avg. Processing Time</div>
@@ -893,7 +1135,7 @@ const Admin = () => {
           <div className="card-value">5.2 days</div>
           <div className="card-change positive"><i className="fas fa-arrow-down"></i> 0.8 days faster</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Quote Success Rate</div>
@@ -904,7 +1146,7 @@ const Admin = () => {
           <div className="card-value">87%</div>
           <div className="card-change positive"><i className="fas fa-arrow-up"></i> 5% increase</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Fabric Transactions</div>
@@ -916,7 +1158,7 @@ const Admin = () => {
           <div className="card-change positive">manufactureMedicine()</div>
         </div>
       </div>
-      
+
       <div className="table-container" style={{ marginTop: '30px' }}>
         <h3 style={{ padding: '20px 20px 0 20px', color: '#1b5e20' }}>Manufacturer Quotes</h3>
         <table>
@@ -966,7 +1208,7 @@ const Admin = () => {
   const renderGeofencing = () => (
     <>
       <h2 className="section-title"><i className="fas fa-map-marker-alt"></i> Geo-Fencing & Compliance Monitoring</h2>
-      
+
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
@@ -978,7 +1220,7 @@ const Admin = () => {
           <div className="card-value">{geoFencingData.allowedZones.length}</div>
           <div className="card-change">India: North, South, East, West</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Season Window Violations</div>
@@ -989,7 +1231,7 @@ const Admin = () => {
           <div className="card-value">{geoFencingData.violations.filter(v => v.type === 'Season Window').length}</div>
           <div className="card-change negative"><i className="fas fa-arrow-up"></i> This month</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">AI Threshold Compliance</div>
@@ -1000,7 +1242,7 @@ const Admin = () => {
           <div className="card-value">{geoFencingData.compliance.aiValidation}%</div>
           <div className="card-change positive"><i className="fas fa-arrow-up"></i> Within limits</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">Out-of-Range Violations</div>
@@ -1012,7 +1254,7 @@ const Admin = () => {
           <div className="card-change negative"><i className="fas fa-arrow-up"></i> Collector moved</div>
         </div>
       </div>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginTop: '30px' }}>
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}><i className="fas fa-map"></i> Compliance Dashboard</h3>
@@ -1023,7 +1265,7 @@ const Admin = () => {
             </div>
             <ProgressBar percentage={geoFencingData.compliance.harvestRules} />
           </div>
-          
+
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
               <span>_checkQualityThresholds()</span>
@@ -1031,7 +1273,7 @@ const Admin = () => {
             </div>
             <ProgressBar percentage={geoFencingData.compliance.qualityThresholds} />
           </div>
-          
+
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
               <span>AI Model Validation</span>
@@ -1040,7 +1282,7 @@ const Admin = () => {
             <ProgressBar percentage={geoFencingData.compliance.aiValidation} />
           </div>
         </div>
-        
+
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}><i className="fas fa-exclamation-triangle"></i> Recent Violations</h3>
           {geoFencingData.violations.map(violation => (
@@ -1060,7 +1302,7 @@ const Admin = () => {
   const renderSmartLabeling = () => (
     <>
       <h2 className="section-title"><i className="fas fa-qrcode"></i> Smart Label Generation</h2>
-      
+
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
@@ -1072,18 +1314,18 @@ const Admin = () => {
           <div className="card-value">{blockchainData.polygon.nftsMinted}</div>
           <div className="card-change">This month: 124</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">ProductIDs Created</div>
-              <div className="card-icon">
+            <div className="card-icon">
               <i className="fas fa-barcode"></i>
             </div>
           </div>
           <div className="card-value">{blockchainData.polygon.nftsMinted}</div>
           <div className="card-change">1:1 with batches</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">IPFS Metadata</div>
@@ -1094,7 +1336,7 @@ const Admin = () => {
           <div className="card-value">100% Available</div>
           <div className="card-change positive">All pinned</div>
         </div>
-        
+
         <div className="card">
           <div className="card-header">
             <div className="card-title">NFT Mint Success</div>
@@ -1106,7 +1348,7 @@ const Admin = () => {
           <div className="card-change positive">No failures</div>
         </div>
       </div>
-      
+
       <div style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginTop: '30px' }}>
         <h3 style={{ color: '#1b5e20', marginBottom: '20px' }}>Label Generation Workflow</h3>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '30px' }}>
@@ -1122,7 +1364,7 @@ const Admin = () => {
             </Fragment>
           ))}
         </div>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div>
             <h4 style={{ color: '#1b5e20', marginBottom: '10px' }}>QR Code Contents</h4>
@@ -1155,9 +1397,37 @@ const Admin = () => {
                 <span>{analytics.consumer.qrScans.toLocaleString()}</span>
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => openModal('generateLabelModal')} style={{ marginTop: '15px', width: '100%' }}>
-              <i className="fas fa-qrcode"></i> Generate New Label
-            </button>
+            {LABEL_MODE === "SIMULATION" && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  fontSize: '0.85rem',
+                  color: '#ff9800',
+                  background: '#fff8e1',
+                  padding: '8px',
+                  borderRadius: '6px'
+                }}
+              >
+                ⚠ <strong>Demo Mode:</strong>
+                LabelID, IPFS CID, and NFT minting are simulated for presentation.
+                No real blockchain or IPFS transaction occurs.
+              </div>
+            )}
+
+            {isSuperAdmin ? (
+              <button
+                className="btn btn-primary"
+                onClick={() => openModal('generateLabelModal')}
+                style={{ marginTop: '15px', width: '100%' }}
+              >
+                <i className="fas fa-qrcode"></i> Generate New Label
+              </button>
+            ) : (
+              <small style={{ color: '#999' }}>
+                Label generation restricted
+              </small>
+            )}
+
           </div>
         </div>
       </div>
@@ -1167,13 +1437,13 @@ const Admin = () => {
   const renderBlockchain = () => (
     <>
       <h2 className="section-title"><i className="fas fa-link"></i> Blockchain Management Panel</h2>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '30px' }}>
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <i className="fab fa-hyperledger"></i> Hyperledger Fabric
           </h3>
-          
+
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>Last Transaction:</span>
@@ -1192,7 +1462,7 @@ const Admin = () => {
               <span>{blockchainData.fabric.transactions.toLocaleString()}</span>
             </div>
           </div>
-          
+
           <div style={{ background: '#e8f5e9', padding: '15px', borderRadius: '8px' }}>
             <h4 style={{ color: '#1b5e20', marginBottom: '10px' }}>Fabric Chaincode Functions</h4>
             <div style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
@@ -1205,12 +1475,12 @@ const Admin = () => {
             </div>
           </div>
         </div>
-        
+
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <i className="fab fa-polygon"></i> Polygon Public Chain
           </h3>
-          
+
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
               <span>NFTs Minted:</span>
@@ -1229,11 +1499,17 @@ const Admin = () => {
               <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{blockchainData.polygon.lastTxHash}</span>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary" onClick={mintNFT}>
-              <i className="fas fa-coins"></i> mintHerbNFT()
-            </button>
+            {isSuperAdmin && (
+              <button
+                className="btn btn-primary"
+                onClick={() => mintNFT(batches.find(b => getBatchId(b) === selectedBatchId))}
+              >
+                <i className="fas fa-coins"></i> mintHerbNFT()
+              </button>
+            )}
+
             <button className="btn btn-secondary">
               <i className="fas fa-sync"></i> Re-sync Metadata
             </button>
@@ -1243,7 +1519,7 @@ const Admin = () => {
           </div>
         </div>
       </div>
-      
+
       <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
         <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}>Recent Blockchain Transactions</h3>
         <div className="table-container">
@@ -1292,15 +1568,15 @@ const Admin = () => {
 
   const renderAnalytics = () => {
     const currentSubTab = activeSubTab['analytics'] || 'consumer-analytics';
-    
+
     return (
       <>
         <h2 className="section-title"><i className="fas fa-chart-bar"></i> Analytics & Reports</h2>
-        
+
         <div className="tabs">
           {analyticsSubTabs.map(subTab => (
-            <div 
-              key={subTab} 
+            <div
+              key={subTab}
               className={`tab ${currentSubTab === subTab ? 'active' : ''}`}
               onClick={() => handleSubTabClick(subTab, 'analytics')}
             >
@@ -1308,7 +1584,7 @@ const Admin = () => {
             </div>
           ))}
         </div>
-        
+
         {currentSubTab === 'consumer-analytics' && (
           <div id="consumer-analytics" className="subtab-content active">
             <div className="dashboard-grid">
@@ -1322,7 +1598,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.consumer.qrScans.toLocaleString()}</div>
                 <div className="card-change positive"><i className="fas fa-arrow-up"></i> 24% this month</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Repeat Scans</div>
@@ -1333,7 +1609,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.consumer.repeatScans.toLocaleString()}</div>
                 <div className="card-change positive">High engagement</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Auth Failures</div>
@@ -1344,7 +1620,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.consumer.authFailures}</div>
                 <div className="card-change positive">Very low (0.2%)</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Avg. Consumer Rating</div>
@@ -1356,7 +1632,7 @@ const Admin = () => {
                 <div className="card-change positive">Excellent</div>
               </div>
             </div>
-            
+
             <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginTop: '30px' }}>
               <h3 style={{ color: '#1b5e20', marginBottom: '15px' }}>Region-wise QR Scans</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -1393,7 +1669,7 @@ const Admin = () => {
             </div>
           </div>
         )}
-        
+
         {currentSubTab === 'sustainability' && (
           <div id="sustainability" className="subtab-content">
             <div className="dashboard-grid">
@@ -1407,7 +1683,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.sustainability.carbonFootprint}</div>
                 <div className="card-change positive"><i className="fas fa-arrow-down"></i> 15% reduction</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Water Saved</div>
@@ -1418,7 +1694,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.sustainability.waterSaved}</div>
                 <div className="card-change positive">Traditional farming</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Organic Compliance</div>
@@ -1429,7 +1705,7 @@ const Admin = () => {
                 <div className="card-value">{analytics.sustainability.organicCompliance}%</div>
                 <div className="card-change positive">Certified organic</div>
               </div>
-              
+
               <div className="card">
                 <div className="card-header">
                   <div className="card-title">Geo-Conservation</div>
@@ -1450,98 +1726,98 @@ const Admin = () => {
   const renderSettings = () => (
     <>
       <h2 className="section-title"><i className="fas fa-cog"></i> Settings & Automation</h2>
-      
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '20px' }}>Notification Rules</h3>
-          
+
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.delayReminders} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.delayReminders} readOnly />
               Delay reminders
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.visitSchedule} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.visitSchedule} readOnly />
               Visit schedule alerts
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.batchCompletion} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.batchCompletion} readOnly />
               Batch completion alerts
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.testerAcceptance} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.testerAcceptance} readOnly />
               Tester acceptance alerts
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.manufacturerQuotes} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.manufacturerQuotes} readOnly />
               Manufacturer quote alerts
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.notifications.blockchainTx} readOnly /> 
+              <input type="checkbox" checked={settings.notifications.blockchainTx} readOnly />
               Blockchain transaction alerts
             </label>
           </div>
-          
+
           <button className="btn btn-primary" style={{ marginTop: '15px' }}>Save Notification Settings</button>
         </div>
-        
+
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h3 style={{ color: '#1b5e20', marginBottom: '20px' }}>Automation Settings</h3>
-          
+
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.autoSelectTester} readOnly /> 
+              <input type="checkbox" checked={settings.automation.autoSelectTester} readOnly />
               Auto-select first tester
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.autoEscalate} readOnly /> 
+              <input type="checkbox" checked={settings.automation.autoEscalate} readOnly />
               Auto-escalate delayed stages
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.weeklyAnalytics} readOnly /> 
+              <input type="checkbox" checked={settings.automation.weeklyAnalytics} readOnly />
               Auto-generate analytics weekly
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.autoSyncIPFS} readOnly /> 
+              <input type="checkbox" checked={settings.automation.autoSyncIPFS} readOnly />
               Auto-sync IPFS reports
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.autoAssignCollector} readOnly /> 
+              <input type="checkbox" checked={settings.automation.autoAssignCollector} readOnly />
               Auto-assign nearest collector
             </label>
           </div>
           <div className="form-group">
             <label>
-              <input type="checkbox" checked={settings.automation.autoValidateAI} readOnly /> 
+              <input type="checkbox" checked={settings.automation.autoValidateAI} readOnly />
               Auto-validate AI thresholds
             </label>
           </div>
-          
+
           <button className="btn btn-primary" style={{ marginTop: '15px' }}>Save Automation Settings</button>
         </div>
       </div>
-      
+
       <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginTop: '30px' }}>
         <h3 style={{ color: '#1b5e20', marginBottom: '20px' }}>System Configuration</h3>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div>
             <h4 style={{ color: '#1b5e20', marginBottom: '15px' }}>Fabric Identity Enrollment</h4>
@@ -1554,7 +1830,7 @@ const Admin = () => {
               <input type="text" value="/etc/fabric/certs/admin-cert.pem" readOnly />
             </div>
           </div>
-          
+
           <div>
             <h4 style={{ color: '#1b5e20', marginBottom: '15px' }}>Public Chain Configuration</h4>
             <div className="form-group">
@@ -1567,7 +1843,7 @@ const Admin = () => {
             </div>
           </div>
         </div>
-        
+
         <div style={{ marginTop: '20px' }}>
           <h4 style={{ color: '#1b5e20', marginBottom: '15px' }}>IPFS Health Monitoring</h4>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#e8f5e9', padding: '15px', borderRadius: '8px' }}>
@@ -1611,6 +1887,38 @@ const Admin = () => {
     }
   };
 
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#2e7d32', marginBottom: '20px' }}></i>
+          <h2>Loading Admin Dashboard...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center', maxWidth: '500px', padding: '40px' }}>
+          <i className="fas fa-exclamation-triangle" style={{ fontSize: '48px', color: '#d32f2f', marginBottom: '20px' }}></i>
+          <h2 style={{ color: '#d32f2f', marginBottom: '10px' }}>Error Loading Data</h2>
+          <p style={{ marginBottom: '20px' }}>{error}</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload()}
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       {/* Sidebar */}
@@ -1620,7 +1928,7 @@ const Admin = () => {
         </div>
         <ul className="nav-menu">
           {navItems.map(item => (
-            <li 
+            <li
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => handleTabClick(item.id)}
@@ -1644,23 +1952,26 @@ const Admin = () => {
           </div>
           <div className="user-info">
             <div className="notification-icon-container">
-              <i 
-                className="fas fa-bell" 
+              <i
+                className="fas fa-bell"
                 style={{ fontSize: '1.2rem', color: '#2e7d32', cursor: 'pointer', position: 'relative' }}
                 onClick={() => setShowNotifications(!showNotifications)}
               >
                 {/* Notification Badge */}
-                {notifications.length > 0 && (
-                  <span className="notification-badge">{notifications.length}</span>
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="notification-badge">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
                 )}
+
               </i>
-              
+
               {/* Notifications Dropdown */}
               {showNotifications && (
                 <div className="notifications-dropdown">
                   <div className="notifications-header">
                     <h4>Notifications ({notifications.length})</h4>
-                    <button 
+                    <button
                       className="btn btn-sm btn-secondary"
                       onClick={() => setShowNotifications(false)}
                     >
@@ -1669,23 +1980,31 @@ const Admin = () => {
                   </div>
                   <div className="notifications-list">
                     {notifications.map(notification => (
-                      <div key={notification.id} className={`notification-dropdown-item ${notification.type}`}>
+                      <div key={notification.id} className={`notification-dropdown-item ${notification.type || 'info'}`}>
                         <div className="notification-dropdown-content">
-                          <strong>{notification.title}</strong>
-                          <p>{notification.details}</p>
-                          <small>{notification.time}</small>
+                          <strong>{notification.title || "System Update"}</strong>
+                          <p>{notification.details || notification.message || "No details available"}</p>
+                          <small>{notification.time || "Just now"}</small>
                         </div>
-                        <button className="notification-mark-read">
+                        <button
+                          className="notification-mark-read"
+                          onClick={() => markNotificationReadLocal(notification.id)}
+                          title="Mark as read"
+                        >
                           <i className="fas fa-check"></i>
                         </button>
                       </div>
                     ))}
                   </div>
                   <div className="notifications-footer">
-                    <button className="btn btn-sm btn-block btn-secondary">
+                    <button className="btn btn-sm btn-block btn-secondary"
+                      onClick={markAllNotificationsRead}
+                    >
                       Mark all as read
                     </button>
-                    <button className="btn btn-sm btn-block btn-primary">
+                    <button className="btn btn-sm btn-block btn-primary"
+                      onClick={viewAllNotifications}
+                    >
                       View all notifications
                     </button>
                   </div>
@@ -1716,16 +2035,18 @@ const Admin = () => {
             </div>
             <div className="form-group">
               <label>Select Batch</label>
-              <select defaultValue="">
+              <select value={selectedBatchId || ""} onChange={e => setSelectedBatchId(e.target.value)}>
                 <option value="">Select a batch...</option>
                 {batches.filter(b => b.stage === 1).map(batch => (
-                  <option key={batch.id} value={batch.id}>{batch.id} ({batch.herb})</option>
+                  <option key={getBatchId(batch)} value={getBatchId(batch)}>
+                    {getBatchId(batch)} ({batch.herb || batch.herb_name})
+                  </option>
                 ))}
               </select>
             </div>
             <div className="form-group">
               <label>Select Collector</label>
-              <select defaultValue="">
+              <select value={selectedCollectorId || ""} onChange={e => setSelectedCollectorId(e.target.value)}>
                 <option value="">Select a collector...</option>
                 {collectors.filter(c => c.status === 'active').map(collector => (
                   <option key={collector.id} value={collector.id}>
@@ -1736,11 +2057,91 @@ const Admin = () => {
             </div>
             <div className="form-group">
               <label>Scheduled Visit Date</label>
-              <input type="date" min={new Date().toISOString().split('T')[0]} />
+              <input
+                type="date"
+                value={visitDate}
+                onChange={e => setVisitDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button className="btn btn-primary" onClick={assignCollector}>Assign Collector</button>
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalOpen === 'publishTesterModal' && (
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2 style={{ color: '#1b5e20' }}>
+                Publish Tester Request
+              </h2>
+              <span className="close-modal" onClick={closeModal}>
+                &times;
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label>Select Batch for Testing</label>
+              <select
+                value={selectedBatchId || ""}
+                onChange={(e) => setSelectedBatchId(e.target.value)}
+              >
+                <option value="">Select batch...</option>
+
+                {batches
+                  .filter(
+                    (b) =>
+                      (b.status === "verify" || b.status === "harvest_completed")
+                  )
+
+                  .map((batch) => (
+                    <option
+                      key={getBatchId(batch)}
+                      value={getBatchId(batch)}
+                    >
+                      {getBatchId(batch)} ({batch.herb || batch.herb_name})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div
+              style={{
+                background: '#e8f5e9',
+                padding: '12px',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                marginBottom: '15px'
+              }}
+            >
+              📢 This will notify <strong>all testers</strong>.
+              The <strong>first tester</strong> to accept will be assigned automatically.
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {isSuperAdmin ? (
+                <button
+                  className="btn btn-primary"
+                  onClick={publishTesterRequest}
+                  disabled={!selectedBatchId}
+                >
+                  Publish Request
+                </button>
+              ) : (
+                <small style={{ color: '#999' }}>
+                  Restricted to Super Admin
+                </small>
+              )}
+
+              <button
+                className="btn btn-secondary"
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -1753,18 +2154,34 @@ const Admin = () => {
               <h2 style={{ color: '#1b5e20' }}>Generate LabelID</h2>
               <span className="close-modal" onClick={closeModal}>&times;</span>
             </div>
+            {LABEL_MODE === "SIMULATION" && (
+              <div style={{
+                background: '#fff3cd',
+                padding: '12px',
+                borderRadius: '8px',
+                marginBottom: '15px',
+                fontSize: '0.9rem'
+              }}>
+                ⚠ <strong>Simulation Mode:</strong>
+                LabelID, IPFS CID and Blockchain entries are <strong>mocked</strong>.
+                No real blockchain or IPFS write occurs.
+              </div>
+            )}
+
             <div className="form-group">
               <label>Select Batch for Labeling</label>
-              <select defaultValue="">
+              <select value={selectedBatchId || ""} onChange={e => setSelectedBatchId(e.target.value)}>
                 <option value="">Select a completed batch...</option>
                 {batches.filter(b => b.stage === 7).map(batch => (
-                  <option key={batch.id} value={batch.id}>{batch.id} ({batch.herb}) - Manufacturing Complete</option>
+                  <option key={getBatchId(batch)} value={getBatchId(batch)}>
+                    {getBatchId(batch)} ({batch.herb || batch.herb_name}) - Manufacturing Complete
+                  </option>
                 ))}
               </select>
             </div>
             <div className="form-group">
               <label>Label Type</label>
-              <select defaultValue="standard">
+              <select value={labelType} onChange={e => setLabelType(e.target.value)}>
                 <option value="standard">Standard QR Label</option>
                 <option value="enhanced">Enhanced Security Label</option>
                 <option value="premium">Premium Holographic Label</option>
@@ -1781,7 +2198,14 @@ const Admin = () => {
               </ul>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" onClick={generateLabel}>Generate Label</button>
+              <button
+                className="btn btn-primary"
+                onClick={generateLabel}
+                disabled={LABEL_MODE !== "SIMULATION" && LABEL_MODE !== "LIVE"}
+              >
+                Generate Label
+              </button>
+
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
             </div>
           </div>
@@ -1797,7 +2221,12 @@ const Admin = () => {
             </div>
             <div className="form-group">
               <label>Batch ID</label>
-              <input type="text" value="HB-2023-08-119" readOnly />
+              <input
+                type="text"
+                value={mintBatch ? getBatchId(mintBatch) : ""}
+                readOnly
+              />
+
             </div>
             <div className="form-group">
               <label>Metadata CID (IPFS)</label>
@@ -1814,13 +2243,54 @@ const Admin = () => {
               <div>Gas Estimate: ~0.01 MATIC</div>
               <div>Token ID: #{parseInt(blockchainData.polygon.lastTokenId.slice(1)) + 1}</div>
             </div>
+            {LABEL_MODE === "SIMULATION" && (
+              <div style={{
+                background: '#fff3cd',
+                padding: '10px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                marginBottom: '10px'
+              }}>
+                ⚠ NFT minting is disabled in simulation mode.
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" onClick={confirmMint}>Confirm & Mint NFT</button>
+              <button
+                className="btn btn-primary"
+                onClick={confirmMint}
+                disabled={LABEL_MODE === "SIMULATION"}
+              >
+                Confirm & Mint NFT
+              </button>
+
               <button className="btn btn-secondary" onClick={closeModal}>Cancel</button>
             </div>
           </div>
         </div>
       )}
+      {modalOpen === "allNotificationsModal" && (
+        <div className="modal" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <h2>All Notifications</h2>
+              <span className="close-modal" onClick={closeModal}>&times;</span>
+            </div>
+
+            {notifications.map(n => (
+              <div key={n.id} style={{
+                padding: '10px',
+                borderBottom: '1px solid #eee'
+              }}>
+                <strong>{n.title || "Notification"}</strong>
+                <p>{n.message}</p>
+                <small>{n.time || "—"}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
