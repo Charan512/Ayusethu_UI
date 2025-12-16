@@ -7,7 +7,7 @@ import Labtest from"./pages/Labtest.jsx";
 import Collector from"./pages/Collector.jsx";
 import Admin from "./pages/Admin.jsx"
 import Manufacturer from "./pages/Manufacturer.jsx";
-import ConsumerVerificationPage from "./pages/ConsumerVerificationPage.jsx"; 
+import Consumer from "./pages/Consumer.jsx"; 
 
 function App() {
   return (
@@ -17,7 +17,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/Login" element={<Login />} />
         
-        <Route path="/consumer/:productUnitId" element={<ConsumerVerificationPage />} />
+        <Route path="/consumer/:productUnitId" element={<Consumer/>} />
         
         {/* AUTHENTICATED ROUTES */}
         <Route path="/Labtest" element={<Labtest/>}/> 
