@@ -1,11 +1,12 @@
-.container{
+.container {
   background-image: url("https://img.freepik.com/premium-photo/bottle-herbs-flowers-white-background_1022029-137813.jpg");
-  width:100vw;
-  max-width:1600px;
-    background-repeat: no-repeat;
-      background-size: 100% 100%;   
-      min-height:100vh;
+  width: 100vw;
+  max-width: 1600px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  min-height: 100vh;
 }
+
 .loginWrapper {
   background-size: cover;
   background-position: center;
@@ -25,7 +26,7 @@
   padding: 12px 25px;
   border-radius: 40px;
   backdrop-filter: blur(8px);
-  top:-34px;
+  top: -34px;
 }
 
 .roleTab {
@@ -35,7 +36,7 @@
   font-size: 15px;
   cursor: pointer;
   color: #4b3a2f;
-  position:relative;
+  position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -53,7 +54,7 @@
   width: 100%;
   background: #8c5c3a;
   border-radius: 10px;
-  margin-right:00px;
+  margin-right: 00px;
 }
 
 /* Card */
@@ -63,7 +64,7 @@
   padding: 35px 40px;
   width: 350px;
   border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(6px);
   overflow: visible;
 }
@@ -90,6 +91,7 @@ input {
   border: 1px solid #aac574;
   background: #c6e0bd80;
   font-size: 14px;
+  color: black;
 }
 
 /* Buttons */
@@ -160,7 +162,8 @@ select {
   border: 1px solid #aac574;
   background: #c6e0bd80;
   font-size: 14px;
-  appearance: none; /* removes default arrow in some browsers */
+  appearance: none;
+  /* removes default arrow in some browsers */
   -webkit-appearance: none;
   -moz-appearance: none;
   cursor: pointer;
