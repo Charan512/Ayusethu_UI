@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import "../styles/User.css";
+import "../styles/Consumer.css";
 
 // Icons
 import { FaCamera, FaCheckCircle, FaLeaf, FaSeedling, FaCertificate, FaFlask, FaIndustry, FaTimesCircle, FaClock, FaExclamationTriangle } from 'react-icons/fa';
