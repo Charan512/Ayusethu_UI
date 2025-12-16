@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/Manufacturer.css';
-import api from "../api/api"; // ✅ STEP 1: API client
+import api from "../api/adminApi"; 
 import { useAuth } from "../context/AuthContext"; // ✅ STEP 3: Auth context
 
 const Manufacturer = () => {
