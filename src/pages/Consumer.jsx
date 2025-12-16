@@ -7,7 +7,7 @@ import "../styles/Consumer.css";
 import { FaCamera, FaCheckCircle, FaLeaf, FaSeedling, FaCertificate, FaFlask, FaIndustry, FaTimesCircle, FaClock, FaExclamationTriangle } from 'react-icons/fa';
 
 // Configuration: MUST be set in your React app's environment (e.g., .env)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'; 
+const API_BASE_URL = process.env.API_BASE || 'http://localhost:8000'; 
 // Public Block Explorer URL (Placeholder for a real explorer)
 const BLOCK_EXPLORER_URL = "https://explorer.polygon.technology/tx/";
 

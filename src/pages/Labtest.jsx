@@ -13,7 +13,7 @@ import "../styles/Labtest.css";
 /* ===============================
    CONFIG
 ================================ */
-const API_BASE = "http://localhost:8000"; // adjust if needed
+const API_BASE = process.env.API_BASE || 'http://localhost:8000'; 
 
 const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("token")}`,
