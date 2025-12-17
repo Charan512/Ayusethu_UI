@@ -21,7 +21,7 @@ export const AuthContextProvider = ({ children }) => {
 
     // --- EFFECT: Load Token & User from Local Storage on Mount ---
     useEffect(() => {
-        const storedToken = localStorage.getItem('access_token');
+        const storedToken = localStorage.getItem('access_token'); 
         const storedUser = localStorage.getItem('user');
         
         if (storedToken && storedUser) {
@@ -44,9 +44,10 @@ export const AuthContextProvider = ({ children }) => {
     const login = async ({ email, password, role }) => {
         setIsLoading(true);
         try {
-            // 🛑 FIX: Using axios.post with the full URL to resolve 405 error
-            const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password, role });
-            
+            const cleanedBaseUrl = API_BASE_URL.replace(/\/$/, '');
+            const LOGIN_URL = `${cleanedBaseUrl}/auth/login`; 
+    
+            const response = await axios.post(LOGIN_URL, { email, password, role });        
             const newToken = response.data.access_token;
             const userData = response.data.user;
 
