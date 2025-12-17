@@ -1,13 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; // Assuming you use react-router-dom
+import { useNavigate } from 'react-router-dom';
 
 // --- API Client Setup ---
-// Uses the environment variable you set in Vercel: REACT_APP_API_BASE
-const API_BASE_URL = import.meta.env.VITE_API_BASE;const publicApi = axios.create({
-    baseURL: API_BASE_URL,
-    headers: { 'Content-Type': 'application/json' },
-});
+const API_BASE_URL = import.meta.env.VITE_API_BASE;
 
 // 1. Create the Context
 const AuthContext = createContext(null);
@@ -48,7 +44,8 @@ export const AuthContextProvider = ({ children }) => {
     const login = async ({ email, password, role }) => {
         setIsLoading(true);
         try {
-            const response = await publicApi.post('/auth/login', { email, password, role });
+            // 🛑 FIX: Using axios.post with the full URL to resolve 405 error
+            const response = await axios.post(`${API_BASE_URL}/auth/login`, { email, password, role });
             
             const newToken = response.data.access_token;
             const userData = response.data.user;
@@ -65,8 +62,11 @@ export const AuthContextProvider = ({ children }) => {
             // 3. Set API Header for future requests
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
+            // 4. Redirect Logic (matching your App.jsx routes)
             if (role === 'Admin') {
                 navigate('/Admin'); 
+            } else if (role === 'Tester') {
+                navigate('/Labtest'); 
             } else {
                 navigate(`/${role}`); 
             }
@@ -87,7 +87,7 @@ export const AuthContextProvider = ({ children }) => {
         setIsAuthenticated(false);
         localStorage.clear();
         delete axios.defaults.headers.common['Authorization'];
-        navigate('/login'); // Redirect to login page
+        navigate('/Login'); // Redirect to capitalized Login page
     };
 
     // --- CONTEXT VALUE ---
@@ -102,7 +102,6 @@ export const AuthContextProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
-            {/* Don't render children until the token check is complete */}
             {!isLoading && children}
         </AuthContext.Provider>
     );
