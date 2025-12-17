@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, Fragment } from "react";
 import adminApi from "../api/adminApi";
 import "../styles/Admin.css";
-
+import { useAuth } from "../context/AuthContext";
+import { Navigate } from "react-router-dom";
 /* =========================
    HELPERS
 ========================= */
 const getBatchId = (batch) => batch?.batch_id || batch?.id || "";
-const isSuperAdmin =
-  localStorage.getItem("role") === "superadmin";
 
 /* =========================
    COMPONENT
@@ -17,6 +16,12 @@ const Admin = () => {
   /* =========================
    CORE STATE
 ========================= */
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  // 🛑 Define isSuperAdmin here where user is available
+  // Using 'Admin' role as super admin based on your authentication logic
+  const isSuperAdmin = user?.role === "Admin";
+
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeSubTab, setActiveSubTab] = useState({
     users: "create-user",
@@ -102,12 +107,7 @@ const Admin = () => {
   /* =========================
    AUTH GUARD
 ========================= */
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      window.location.href = "/login";
-    }
-  }, []);
+
 
   /* =========================
      DATA LOAD
@@ -194,7 +194,7 @@ const Admin = () => {
       alert("Invalid batch selected");
       return;
     }
-    
+
     if (!["verify", "harvest_completed"].includes(batch.status)) {
       alert("Batch must be in verify or harvest completed state");
       return;
@@ -1889,18 +1889,38 @@ const Admin = () => {
 
 
   // Loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
           <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#2e7d32', marginBottom: '20px' }}></i>
-          <h2>Loading Admin Dashboard...</h2>
+          <h2>Initializing Authentication...</h2>
         </div>
       </div>
     );
   }
 
-  // Error state
+  // 🛑 2. AUTHORIZATION/ROLE GUARD
+  // If context is loaded but user is not authenticated OR not Admin, redirect.
+  if (!isAuthenticated || user.role !== 'Admin') {
+    // Navigate to the Login page (or home page)
+    return <Navigate to="/Login" replace />;
+  }
+
+  // 🛑 3. DATA LOADING STATE (Your component's internal state)
+  // If the context passed the check, now check if the internal dashboard data is loaded.
+  if (loading) {
+    return (
+      <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#2e7d32', marginBottom: '20px' }}></i>
+          <h2>Loading Admin Dashboard Data...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // 🛑 4. ERROR STATE
   if (error) {
     return (
       <div className="app" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -1918,6 +1938,15 @@ const Admin = () => {
       </div>
     );
   }
+
+  // 🛑 5. FINAL DATA FETCH useEffect (Keep this exactly where you placed it)
+  useEffect(() => {
+    // Only fetch data if the context is authenticated as Admin and not loading context data
+    if (!isLoading && isAuthenticated && user.role === 'Admin') {
+      fetchAllAdminData();
+      fetchNotifications();
+    }
+  }, [isAuthenticated, isLoading]);
 
   return (
     <div className="app">
