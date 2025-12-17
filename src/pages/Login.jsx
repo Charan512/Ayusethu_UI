@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "../styles/Login.module.css";
-
+import { useAuth } from "../context/AuthContext";
 const API_BASE = import.meta.env.VITE_API_BASE;
 export default function LoginPage() {
   // ---------------- STATES ----------------
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [companyName, setCompanyName] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
 
-
+  const { login } = useAuth();
   const registerRoles = ["Collector", "Tester", "Manufacturer"];
   
 
@@ -40,51 +40,19 @@ export default function LoginPage() {
   };
 
   // ---------------- LOGIN ----------------
-  const handleLogin = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          role: activeRole,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.detail || "Login failed");
-        return;
-      }
-
-      // ✅ STORE USER + JWT
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("token", data.access_token);
-
-      switch (data.user.role) {
-        case "Admin":
-          navigate("/Admin");           
-          break;
-        case "Collector":
-          navigate("/Collector");
-          break;
-        case "Tester":
-          navigate("/Labtest");
-          break;
-        case "Manufacturer":
-          navigate("/Manufacturer");
-          break;
-        default:
-          navigate("/");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Server error");
-    }
-  };
-
+const handleLogin = async () => {
+  try {
+    await login({ 
+        email, 
+        password, 
+        role: activeRole 
+    });
+  } catch (error) {
+    const errorDetail = error.response?.data?.detail || "Login failed";
+    console.error("Login Error:", error);
+    alert(errorDetail);
+  }
+};
   // ---------------- REGISTER ----------------
   const handleRegister = async () => {
     try {

@@ -65,7 +65,11 @@ export const AuthContextProvider = ({ children }) => {
             // 3. Set API Header for future requests
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
-            navigate(`/${role.toLowerCase()}-dashboard`); // Redirect upon successful login
+            if (role === 'Admin') {
+                navigate('/Admin'); 
+            } else {
+                navigate(`/${role}`); 
+            }
 
         } catch (error) {
             console.error("Login failed:", error);
