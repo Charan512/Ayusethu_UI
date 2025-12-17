@@ -64,6 +64,9 @@ export default function LoginPage() {
       localStorage.setItem("token", data.access_token);
 
       switch (data.user.role) {
+        case "Admin":
+        navigate("/Admin"); // Use the path defined in your router for the Admin Dashboard
+        break;
         case "Collector":
           navigate("/Collector");
           break;
