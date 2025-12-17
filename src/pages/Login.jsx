@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "../styles/Login.module.css";
 import { useAuth } from "../context/AuthContext";
+
 const API_BASE = import.meta.env.VITE_API_BASE;
 export default function LoginPage() {
   // ---------------- STATES ----------------
