@@ -3,7 +3,7 @@ import styles from "../styles/Collector.module.css";
 import { Bell, X, CheckCircle, AlertCircle, MapPin, Camera } from 'lucide-react';
 const API_BASE = import.meta.env.VITE_API_BASE;// ✅ FIX #6: Improved token handling with validation
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("access_token");
   if (!token) {
     localStorage.clear();
     window.location.href = "/";
@@ -14,10 +14,14 @@ const getAuthHeaders = () => {
 
 // ✅ FIX #6: Global API error handler
 const handleApiError = (res) => {
-  if (res.status === 401 || res.status === 403) {
-    localStorage.clear();
-    window.location.href = "/";
-    throw new Error("Session expired");
+  if (res.status >= 400) {
+    if (res.status === 401 || res.status === 403) {
+      console.log("Auth error, clearing localStorage");
+      localStorage.clear();
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+    throw new Error(`API Error ${res.status}`);
   }
 };
 
@@ -192,11 +196,14 @@ function App() {
         throw new Error("Submission failed");
       }
 
-
-      // ✅ Refresh batch state
+      // 2. Load active batch
       const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
         headers: getAuthHeaders()
       });
+      if (!batchRes.ok) {
+        handleApiError(batchRes);
+        return;
+      }
       const batchData = await batchRes.json();
       setActiveBatch(batchData);
       setCurrentStage(batchData.current_stage);
@@ -305,9 +312,17 @@ function App() {
         const userRes = await fetch(`${API_BASE}/api/auth/me`, {
           headers: getAuthHeaders()
         });
-        handleApiError(userRes);
+        
+        if (!userRes.ok) {
+          if (userRes.status === 401 || userRes.status === 403) {
+            localStorage.clear();
+            window.location.href = "/login";
+            return;
+          }
+          throw new Error(`Failed to load user: ${userRes.status}`);
+        }
+        
         const userData = await userRes.json();
-
         if (userData.role !== "Collector") {
           window.location.href = "/";
           return;
@@ -319,7 +334,10 @@ function App() {
         const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
           headers: getAuthHeaders()
         });
-        handleApiError(batchRes);
+        if (!batchRes.ok) {
+          handleApiError(batchRes);
+          return;
+        }
         const batchData = await batchRes.json();
 
         if (batchData) {
@@ -334,7 +352,6 @@ function App() {
             batchId: batchData.batch_id
           }));
           // ✅ CRITICAL: Do NOT initialize farmerSubmitted from completed_stages
-          // farmerSubmitted is set by fetchStageData() only
           // completed_stages is used by getStageStatus() for UI display
         }
 
@@ -379,11 +396,19 @@ function App() {
       const res = await fetch(`${API_BASE}/api/notifications`, {
         headers: getAuthHeaders()
       });
+      
       if (!res.ok) {
-        handleApiError(res);
+        if (res.status === 401 || res.status === 403) {
+
+          console.error("Notifications auth error");
+          return;
+        }
+        console.error("Failed to fetch notifications");
         return;
       }
+      
       const data = await res.json();
+      
       // \u2705 Normalize notification schema
       const normalized = data.map(n => ({
         ...n,
@@ -657,26 +682,26 @@ function App() {
   // \u2705 BACKEND-DRIVEN: Fetch farmer submissions
   const fetchStageData = async (stage) => {
     if (!activeBatch?.batch_id) return;
-
+    
     try {
       const res = await fetch(
         `${API_BASE}/api/collector/batch/${activeBatch.batch_id}/stage/${stage}`,
         { headers: getAuthHeaders() }
       );
+      
       if (!res.ok) {
         handleApiError(res);
         return;
       }
-
-      const data = await res.json();
-
+      
+      const data = await res.json();  // ✅ ADD THIS BACK - you need the data!
+      
       // ✅ CRITICAL: Set submission status from backend
       setFarmerSubmitted(prev => ({
         ...prev,
         [stage]: Boolean(data?.submitted)
       }));
-
-
+      
       // Populate form with farmer data
       if (stage === 2) {
         setStage2Form(prev => ({
@@ -700,7 +725,6 @@ function App() {
       console.error("Failed to load stage data:", err);
     }
   };
-
   // \u274c DELETED: markStageDone - frontend stage tracking removed
 
   // \u2705 BACKEND-DRIVEN: Approve stage with validation
@@ -842,7 +866,11 @@ function App() {
       const batchRes = await fetch(`${API_BASE}/api/collector/active-batch`, {
         headers: getAuthHeaders()
       });
-      handleApiError(batchRes);
+      
+      if (!batchRes.ok) {
+        handleApiError(batchRes);
+        return;
+      }
       const batchData = await batchRes.json();
       if (batchData) {
         setActiveBatch(batchData);

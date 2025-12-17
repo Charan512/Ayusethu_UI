@@ -41,19 +41,18 @@ export default function LoginPage() {
   };
 
   // ---------------- LOGIN ----------------
-const handleLogin = async () => {
-  try {
-    await login({ 
-        email, 
-        password, 
-        role: activeRole 
-    });
-  } catch (error) {
-    const errorDetail = error.response?.data?.detail || "Login failed";
-    console.error("Login Error:", error);
-    alert(errorDetail);
-  }
-};
+  const handleLogin = async () => {
+    try {
+      await login({ 
+          email, 
+          password, 
+          role: activeRole 
+      });
+    } catch (error) {
+      const errorDetail = error.response?.data?.detail || "Login failed";
+      alert(errorDetail);
+    }
+  };
   // ---------------- REGISTER ----------------
   const handleRegister = async () => {
     try {
@@ -79,7 +78,7 @@ const handleLogin = async () => {
         payload.licenseNumber = licenseNumber;
       }
 
-      const res = await fetch(`${API_BASE}/auth/register`, {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

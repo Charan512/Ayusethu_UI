@@ -3,25 +3,12 @@ import adminApi from "../api/adminApi";
 import "../styles/Admin.css";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-/* =========================
-   HELPERS
-========================= */
 const getBatchId = (batch) => batch?.batch_id || batch?.id || "";
 
-/* =========================
-   COMPONENT
-========================= */
-const Admin = () => {
 
-  /* =========================
-   CORE STATE
-========================= */
+const Admin = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const isSuperAdmin = user?.role === "Admin";
-  // 🛑 Define isSuperAdmin here where user is available
-  // Using 'Admin' role as super admin based on your authentication logic
-  
-
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeSubTab, setActiveSubTab] = useState({
     users: "create-user",
@@ -29,11 +16,9 @@ const Admin = () => {
     analytics: "consumer-analytics",
   });
 
-
   const [modalOpen, setModalOpen] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mintBatch, setMintBatch] = useState(null);
-
   const [batches, setBatches] = useState([]);
   const [collectors, setCollectors] = useState([]);
   const [testers, setTesters] = useState([]);
@@ -45,7 +30,6 @@ const Admin = () => {
   const [selectedCollectorId, setSelectedCollectorId] = useState(null);
   const [visitDate, setVisitDate] = useState("");
   const [labelType, setLabelType] = useState("standard");
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [kpis, setKpis] = useState({
@@ -82,12 +66,8 @@ const Admin = () => {
 
     return {
       ...batch,
-
-      // 🔑 HARD REQUIREMENTS FOR UI
       stage,
       completeness: Math.round((stage / 7) * 100),
-
-      // Optional but stabilizes tables
       herb: batch.herb_name,
       timeline: batch.timeline ? Object.keys(batch.timeline).join(" → ") : "N/A",
     };
@@ -103,15 +83,6 @@ const Admin = () => {
     submitted: q.submitted_at,
     status: q.status || "pending",
   });
-
-  /* =========================
-   AUTH GUARD
-========================= */
-
-
-  /* =========================
-     DATA LOAD
-  ========================= */
   const fetchAllAdminData = async () => {
     try {
       setLoading(true);
@@ -161,9 +132,7 @@ const Admin = () => {
   useEffect(() => {
     fetchAllAdminData();
   }, []);
-  /* =========================
-   ACTIONS
-========================= */
+
   const assignCollector = async () => {
     try {
       const selectedCollector = collectors.find(c => c.id === selectedCollectorId);
@@ -209,8 +178,7 @@ const Admin = () => {
       alert("Tester request published. First tester wins.");
       await fetchBatches();
 
-      /* 🔥 FIX ISSUE 3 */
-      setSelectedBatchId(null);   // reset previous selection
+      setSelectedBatchId(null);   
       closeModal();
 
     } catch (err) {
@@ -338,7 +306,12 @@ const Admin = () => {
     }
   };
 
-
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.role === 'Admin') {
+      fetchAllAdminData();
+      fetchNotifications();
+    }
+  }, [isAuthenticated, isLoading, user?.role]);
 
 
 
@@ -1939,14 +1912,7 @@ const Admin = () => {
     );
   }
 
-  // 🛑 5. FINAL DATA FETCH useEffect (Keep this exactly where you placed it)
-  useEffect(() => {
-    // Only fetch data if the context is authenticated as Admin and not loading context data
-    if (!isLoading && isAuthenticated && user.role === 'Admin') {
-      fetchAllAdminData();
-      fetchNotifications();
-    }
-  }, [isAuthenticated, isLoading]);
+  
 
   return (
     <div className="app">

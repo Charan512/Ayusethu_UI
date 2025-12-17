@@ -2,33 +2,22 @@ import React, { useState, useEffect } from "react";
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import "../styles/Consumer.css";
-
-// Icons
 import { FaCamera, FaCheckCircle, FaLeaf, FaSeedling, FaCertificate, FaFlask, FaIndustry, FaTimesCircle, FaClock, FaExclamationTriangle } from 'react-icons/fa';
-
-// Configuration: MUST be set in your React app's environment (e.g., .env)
-const API_BASE_URL = import.meta.env.VITE_API_BASE;// Public Block Explorer URL (Placeholder for a real explorer)
+const API_BASE_URL = import.meta.env.VITE_API_BASE;
 const BLOCK_EXPLORER_URL = "https://explorer.polygon.technology/tx/";
-
-
 function ConsumerVerificationPage() {
     const { productUnitId } = useParams(); 
-    
     const [activeHerb, setActiveHerb] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
     const [expandedStage, setExpandedStage] = useState(null);
     const [selectedPhoto, setSelectedPhoto] = useState(null);
-
-    // --- Data Fetching Logic (Unchanged from previous version) ---
     useEffect(() => {
         if (!productUnitId) {
             setError("Error: No Product ID provided in the URL.");
             setLoading(false);
             return;
         }
-
         const fetchVerificationData = async () => {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/public/scan/${productUnitId}`);
