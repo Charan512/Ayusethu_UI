@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom'; // Assuming you use react-router
 
 // --- API Client Setup ---
 // Uses the environment variable you set in Vercel: REACT_APP_API_BASE
-const API_BASE_URL = process.env.API_BASE || 'http://localhost:8000';
-const publicApi = axios.create({
+const API_BASE_URL = import.meta.env.VITE_API_BASE;const publicApi = axios.create({
     baseURL: API_BASE_URL,
     headers: { 'Content-Type': 'application/json' },
 });

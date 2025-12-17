@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "../styles/Login.module.css";
 
-const API_BASE = import.meta.env.API_BASE;
-
+const API_BASE = import.meta.env.VITE_API_BASE;
 export default function LoginPage() {
   // ---------------- STATES ----------------
   const [email, setEmail] = useState("");
@@ -16,8 +15,14 @@ export default function LoginPage() {
   const [companyName, setCompanyName] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
 
-  const roles = ["Collector", "Tester", "Manufacturer"];
-  const [activeRole, setActiveRole] = useState("Collector");
+
+  const registerRoles = ["Collector", "Tester", "Manufacturer"];
+  
+
+  const loginRoles = ["Admin", ...registerRoles]; 
+  
+
+  const [activeRole, setActiveRole] = useState(""); 
   const [showRegister, setShowRegister] = useState(false);
 
   const navigate = useNavigate();
@@ -143,16 +148,17 @@ export default function LoginPage() {
 
                 <label className={styles.label}>Select Role:</label>
                 <select
-                  value={activeRole}
-                  onChange={(e) => setActiveRole(e.target.value)}
-                  className={styles.input}
-                >
-                  {roles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
+                    value={activeRole}
+                    onChange={(e) => setActiveRole(e.target.value)}
+                    className={styles.input}
+                  >
+                    <option value="" disabled hidden>Select Role</option> 
+                    {registerRoles.map((role) => ( 
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
 
                 <input
                   type="text"
@@ -268,17 +274,17 @@ export default function LoginPage() {
 
                 <label className={styles.label}>Select Role:</label>
                 <select
-                  value={activeRole}
-                  onChange={(e) => setActiveRole(e.target.value)}
-                  className={styles.input}
-                >
-                  {roles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-
+                    value={activeRole}
+                    onChange={(e) => setActiveRole(e.target.value)}
+                    className={styles.input}
+                  >
+                    <option value="" disabled hidden>Select Role</option> {/* Default Placeholder */}
+                    {loginRoles.map((role) => ( // Use loginRoles (includes Admin)
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
                 <button className={styles.btn} onClick={handleLogin}>
                   Login
                 </button>
