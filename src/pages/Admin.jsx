@@ -17,10 +17,10 @@ const Admin = () => {
    CORE STATE
 ========================= */
   const { isAuthenticated, isLoading, user } = useAuth();
-
+  const isSuperAdmin = user?.role === "Admin";
   // 🛑 Define isSuperAdmin here where user is available
   // Using 'Admin' role as super admin based on your authentication logic
-  const isSuperAdmin = user?.role === "Admin";
+  
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeSubTab, setActiveSubTab] = useState({
@@ -123,10 +123,10 @@ const Admin = () => {
         testersRes,
         manufacturersRes,
       ] = await Promise.all([
-        adminApi.get("/admin/dashboard"),
-        adminApi.get("/admin/collectors"),
-        adminApi.get("/admin/testers"),
-        adminApi.get("/admin/manufacturers"),
+        adminApi.get("api/admin/dashboard"),
+        adminApi.get("api/admin/collectors"),
+        adminApi.get("api/admin/testers"),
+        adminApi.get("api/admin/manufacturers"),
       ]);
 
       const rawBatches = batchesRes.data?.batches || batchesRes.data || [];
@@ -144,7 +144,7 @@ const Admin = () => {
   };
   const markAllNotificationsRead = async () => {
     try {
-      await adminApi.put("/notifications/read-all");
+      await adminApi.put("api/notifications/read-all");
       setNotifications(prev =>
         prev.map(n => ({ ...n, read: true }))
       );
@@ -173,7 +173,7 @@ const Admin = () => {
         return;
       }
 
-      await adminApi.put(`/admin/assign-collector/${selectedBatchId}`, {
+      await adminApi.put(`api/admin/assign-collector/${selectedBatchId}`, {
         id: selectedCollector.id,
         name: selectedCollector.name,
         visit_date: visitDate
@@ -202,7 +202,7 @@ const Admin = () => {
 
 
     try {
-      await adminApi.post("/admin/publish-tester-request", {
+      await adminApi.post("api/admin/publish-tester-request", {
         batch_id: selectedBatchId,
       });
 
@@ -222,7 +222,7 @@ const Admin = () => {
 
   const fetchQuotes = async (batchId) => {
     try {
-      const res = await adminApi.get(`/admin/quotes/${batchId}`);
+      const res = await adminApi.get(`api/admin/quotes/${batchId}`);
       setManufacturerQuotes((res.data || []).map(normalizeQuote));
     } catch {
       setManufacturerQuotes([]);
@@ -306,7 +306,7 @@ const Admin = () => {
   });
   const fetchNotifications = async () => {
     try {
-      const res = await adminApi.get("/notifications"); // ✅ FIX
+      const res = await adminApi.get("api/notifications"); // ✅ FIX
       setNotifications(
         (res.data || []).map(n => ({ ...n, id: n.id || n._id }))
       );
@@ -330,7 +330,7 @@ const Admin = () => {
   // Helper function to fetch batches only
   const fetchBatches = async () => {
     try {
-      const res = await adminApi.get("/admin/dashboard");
+      const res = await adminApi.get("api/admin/dashboard");
       const raw = res.data?.batches || res.data || [];
       setBatches(raw.map(normalizeBatch));
     } catch (err) {
@@ -485,7 +485,7 @@ const Admin = () => {
       }
 
       // TODO: Update when backend endpoint is finalized
-      await adminApi.post("/admin/select-manufacturer", {
+      await adminApi.post("api/admin/select-manufacturer", {
         batch_id: quote.batchId,
         manufacturer_id: quote.manufacturerId,
       });

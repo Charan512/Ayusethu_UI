@@ -1,12 +1,18 @@
+// frontend/src/api/adminApi.js
 import axios from "axios";
 
+let baseURL = import.meta.env.VITE_API_BASE;
+if (baseURL && !baseURL.endsWith('/')) {
+    baseURL += '/';
+}
+
 const adminApi = axios.create({
-  baseURL: "https://ayusethu-api.onrender.com",
+  baseURL: baseURL,
 });
 
-// Attach JWT
+
 adminApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
+  const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
