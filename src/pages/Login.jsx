@@ -65,8 +65,8 @@ export default function LoginPage() {
 
       switch (data.user.role) {
         case "Admin":
-        navigate("/Admin"); // Use the path defined in your router for the Admin Dashboard
-        break;
+          navigate("/Admin");           
+          break;
         case "Collector":
           navigate("/Collector");
           break;
